@@ -1,0 +1,22 @@
+{
+  "root": true,
+  "extends": "eslint:recommended",
+  "parserOptions": {
+    "ecmaVersion": 2017,
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "impliedStrict": true
+    }
+  },
+  "rules": {
+    "semi": 2,
+    "no-param-reassign": 1,
+    "eqeqeq": 1,
+    "quotes": [2, "single"],
+    "indent": [2, "space"]
+  },
+  "env": {
+    "es6": true,
+    "node": true
+  }
+}
