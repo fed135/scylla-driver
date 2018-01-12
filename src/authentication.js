@@ -1,0 +1,7 @@
+- STARTUP
+    - READY (no auth)
+    - AUTH_CHALLENGE
+        - AUTH_RESPONSE
+            - AUTH_CHALLENGE
+                - ...
+            - AUTH_SUCCESS

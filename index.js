@@ -1,18 +1,24 @@
-var clientOptions = require('./lib/client-options');
-exports.Client = require('./lib/client');
-exports.ExecutionProfile = require('./lib/execution-profile').ExecutionProfile;
-exports.types = require('./lib/types');
-exports.errors = require('./lib/errors');
-exports.policies = require('./lib/policies');
-exports.auth = require('./lib/auth');
-exports.metadata = {
-  Metadata: require('./lib/metadata')
-};
-exports.Encoder = require('./lib/encoder');
-/**
- * Returns a new instance of the default [options]{@link ClientOptions} used by the driver.
+/*
+ * Root
  */
-exports.defaultOptions = function () {
-  return clientOptions.defaultOptions();
+
+/* Requires ------------------------------------------------------------------*/
+
+const defaults = require('./src/defaults');
+const client = require('./src/client');
+
+/* Methods -------------------------------------------------------------------*/
+
+/**
+ * Creates a database client 
+ * @param {{ hosts: 'array', workers: 'number', keyspace: 'string' }} options The configuration for the client
+ */
+function createClient(options) {
+  return client(options).init();
+}
+
+/* Exports -------------------------------------------------------------------*/
+
+module.exports = {
+  createClient
 };
-exports.version = require('./package.json').version;

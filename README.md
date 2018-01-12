@@ -29,7 +29,7 @@ Creating a client will spawn multiple forks to allow for more paralel work.
 ```javascript
 const scylladb = require('scylladb');
 const client = scylladb.createClient({
-  hosts: ['0.0.0.0', '/tmp/scylla.socket'],
+  hosts: ['0.0.0.0', '0.0.0.1'],
   keyspace: 'ks1'
 });
 ```

@@ -19,3 +19,5 @@ test/localConfig.json
 .DS_Store
 out/
 /docs
+src/legacy
+*.spec

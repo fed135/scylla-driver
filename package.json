@@ -12,22 +12,22 @@
   ],
   "license": "Apache-2.0",
   "dependencies": {
-    "debug": "^2.6.0",
+    "debug": "^3.1.0",
     "through2": "^2.0.0"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
-    "mocha": "^3.1.0",
-    "sinon": "^1.17.0"
+    "chai": "^4.1.0",
+    "mocha": "^4.1.0",
+    "sinon": "^4.1.0"
   },
   "repository": {
-    "type" : "git",
-    "url" : "https://github.com/fed135/scylladb.git"
+    "type": "git",
+    "url": "https://github.com/fed135/scylladb.git"
   },
   "bugs": {
     "url": "https://github.com/fed135/scylladb/issues"
   },
-  "scripts":  {
+  "scripts": {
     "test": "mocha test/unit test/integration/short -R spec -t 5000",
     "eslint": "eslint ./src"
   }
