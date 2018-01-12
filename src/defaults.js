@@ -7,6 +7,7 @@
 module.exports = {
   hosts: [],
   port: 9042,
+  workers: 10,
   policies: {
     loadBalancing: 'DCAwareRoundRobinPolicy',
     reconnection: 'ExponantialReconnect',

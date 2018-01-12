@@ -40,7 +40,7 @@ Fields | Description
 --- | ---
 hosts | List of hosts to connect to. Can be an IP, a fqdn or a unix socket (required)
 keyspace | The keyspace to select (required)
-forks | The number of workers to spawn (default: 10) 
+workers | The number of connection workers to spawn per host (default: 10) 
 
 ### Querying
 
