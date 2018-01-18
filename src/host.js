@@ -38,7 +38,9 @@ function host(scope, hostname) {
         const connection = {
             worker: fork(path.resolve(__dirname, 'worker'), [
                 hostname,
-                scope.options.port
+                scope.options.port,
+                `${scope.options.compression}`,
+                scope.options.cqlVersion
             ]),
         };
         connection.worker.on('message', handleResponse);
@@ -83,9 +85,9 @@ function host(scope, hostname) {
         }
 
         getConnection().worker.send({
-            id,
-            op,
-            params,
+            streamId: id,
+            opcode: op,
+            body: params.statement,
         });
 
         return promise;

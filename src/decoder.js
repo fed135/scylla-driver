@@ -9,13 +9,13 @@ const protocol = require('./protocol');
 
 /* Methods -------------------------------------------------------------------*/
 
-function frameHeader(header) {
+function frameHeader(bytes) {
     return {
-        version: uint8(header[0]), 
-        flags: uint8(header[1]), 
-        streamId: uint16([header[2], header[3]]),
-        opcode: uint8(header[4]),
-        bodyLength: uint32(header.slice(5))
+        version: protocol.meta.version, 
+        flags: protocol.flagsIn[uint8(bytes[1])], 
+        streamId: int16([bytes[2], bytes[3]]),
+        opcode: protocol.opcodesIn[uint8(bytes[4])],
+        bodyLength: int32(bytes.slice(5, 9))
     };
 }
 
@@ -31,10 +31,29 @@ function uint32(bytes) {
     return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | (bytes[3]);
 }
 
-function response(bytes) {
+function int16(bytes) {
+    const val = (bytes[0] << 8) | bytes[1];
+    return (val & 0x8000) ? val | 0xFFFF0000 : val;
+}
 
+function int32(bytes) {
+    return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | (bytes[3]);
+}
+
+function content(bytes, options) {
+    if (options.compression === 'snappy') {
+        return snappy.uncompressSync(bytes);
+    }
+    return bytes.toString();
+}
+
+function request(bytes, options = {}) {
+    return {
+        header: frameHeader(bytes),
+        body: content(bytes.slice(10), options)
+    };
 }
 
 /* Exports -------------------------------------------------------------------*/
 
-module.exports = { frameHeader, uint8, uint16, uint32 };
+module.exports = { frameHeader, request };

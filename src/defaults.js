@@ -8,17 +8,19 @@ module.exports = {
   hosts: [],
   port: 9042,
   workers: 10,
-  policies: {
+  /*policies: {
     loadBalancing: 'DCAwareRoundRobinPolicy',
     reconnection: 'ExponantialReconnect',
-  },
+  },*/
   queryOptions: {
-    consistency: 'LocalOne',
-    limit: 5000,
+    consistency: 'localOne',
+    limit: 1000,
     prepare: false
   },
-  authProvider: null,
-  maxPrepared: 50000,
-  refreshSchemaDelay: 1000,
+  compression: null,
+  cqlVersion: '3.0.0',
+  maxPrepared: 5000,
+  /*refreshSchemaDelay: 1000,
   isMetadataSyncEnabled: true
+  */
 };

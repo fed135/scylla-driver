@@ -8,7 +8,10 @@
     "db",
     "nosql",
     "driver",
-    "database"
+    "database",
+    "cassandra",
+    "wide",
+    "column"
   ],
   "license": "Apache-2.0",
   "dependencies": {

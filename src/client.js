@@ -33,8 +33,6 @@ function client(scope, hosts) {
     }
 
     function init() {
-        console.log(scope)
-
         // Returns a clean interface
         return { execute, stream, destroy };
     }

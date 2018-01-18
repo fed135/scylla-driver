@@ -7,38 +7,55 @@
 const net = require('net');
 const encoder = require('./encoder');
 const decoder = require('./decoder');
+const auth = require('./authentication');
+const queue = require('./queue');
+
+/* Local variables -----------------------------------------------------------*/
+
+const baseReconnectTime = 100;
+const maxRetryAttempts = 10;
 
 /* Methods -------------------------------------------------------------------*/
 
 function collector(scope) {
-    console.log('\n\nworker', scope);
+    console.log('\n\nworker', scope.host);
+    const requestQueue = queue(sendDBRequest, { locked: true });
+    let reconnectAttempts = 0;
+    let authenticator;
 
     function sendDBRequest(params) {
-        // Dummy
-        return handleDBResponse({ rows: [ { foo: 'bar' }]});
-        // Real
-        // return scope.connection.socket.write(params);
+        console.log('worker sending request', params);
+        return scope.connection.socket.write(params);
     }
 
-    function handleDBResponse(body) {
-        // Dummy
-        return Promise.resolve({
-            header: { streamId: -1 },
-            body,
-        });
+    function handleDBResponse(payload) {
+        const decoded = decoder.request(payload);
+        if (decoded.header.opcode === 'result') {
+            process.send(decoded);
+        }
+        else if (auth.authOperations.includes(decoded.header.opcode)) {
+            authenticator.step(decoded);
+        }
+        else if (decoded.header.opcode === 'ready') {
+            scope.status = 'ready';
+            requestQueue.unlock();
+        }
+        else {
+            handleDBEvent(decoded);
+        }
     }
 
     function handleClientRequest(payload) {
-        console.log('worker got', payload);
-        return sendDBRequest(payload.params)
-            .then(sendClientResponse);
+        // console.log('worker got', payload);
+        return requestQueue.add(encoder.request(payload));
     }
 
-    function sendClientResponse(payload) {
-        process.send(payload);
+    function handleDBEvent(payload) {
+        console.log(payload);
     }
 
     function connect(options) {
+        scope.status = 'startup';
         if (scope.host[0] !== '/') {
             scope.connection = {
                 type: 'tcp',
@@ -51,25 +68,36 @@ function collector(scope) {
             };
         }
 
-        scope.connection.socket.on('message', handleDBResponse);
-        scope.connection.socket.on('error', err => { /*throw err;*/ });
+        scope.connection.socket.on('data', handleDBResponse);
+        scope.connection.socket.on('error', handleError);
+        scope.connection.socket.on('close', handleError);
         process.on('message', handleClientRequest);
+        authenticator = auth.sequence(scope, sendDBRequest).begin();
 
         return scope;
     }
 
-    function query(params) {
-        return sendDBRequest
+    function handleError(err) {
+        console.log(err);
+
+        const delay = baseReconnectTime + (reconnectAttempts * baseReconnectTime) * 1.5;
+        reconnectAttempts++;
+        if (reconnectAttempts >= maxRetryAttempts) {
+            throw new Error(`Maximum reconnect attempts reached for host ${scope.host}`);
+        }
+
+        setTimeout(connect, delay);
     }
 
-    return { query, connect };
+    return { handleClientRequest, handleDBResponse, sendDBRequest, connect };
 }
 
 function init() {
     const scope = collector({
         host: process.argv[2],
         port: process.argv[3],
-        queue: [],
+        compression: process.argv[4],
+        cqlVersion: process.argv[5],
         connection: null,
         status: 'startup',
     });
