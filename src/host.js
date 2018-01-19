@@ -50,7 +50,7 @@ function host(scope, hostname) {
     }
 
     function handleResponse(response) {
-        console.log('host got', response)
+        // console.log('host got', response)
         let handle;
         if (response.header.streamId < 1 && streamsQueue.length > 0) {
             handle = streamsQueue.shift();
@@ -87,7 +87,7 @@ function host(scope, hostname) {
         getConnection().worker.send({
             streamId: id,
             opcode: op,
-            body: params.statement,
+            body: params,
         });
 
         return promise;

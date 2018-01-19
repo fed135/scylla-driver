@@ -59,6 +59,20 @@ function stringMap(obj) {
     return ret;
 }
 
+function query(params) {
+    // console.log(params);
+    return [
+        ...longString(params.statement),
+        ...uint16(protocol.queriesOut.consistencies[params.options.consistency]),
+        0   // TODO: Prepared queries
+    ];
+}
+
+function longString(str) {
+    const bytes = Array.from(new Buffer(str));
+    return [...int32(bytes.length), ...bytes];
+}
+
 function string(encoding, str) {
     const chars = [];
     for (let i = 0; i < str.length; i++) {
@@ -76,4 +90,4 @@ function request(params, options = {}) {
 
 /* Exports -------------------------------------------------------------------*/
 
-module.exports = { request, frameHeader, stringMap };
+module.exports = { request, frameHeader, stringMap, longString, query };

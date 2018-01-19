@@ -18,13 +18,13 @@ const maxRetryAttempts = 10;
 /* Methods -------------------------------------------------------------------*/
 
 function collector(scope) {
-    console.log('\n\nworker', scope.host);
+    // console.log('\n\nworker', scope.host);
     const requestQueue = queue(sendDBRequest, { locked: true });
     let reconnectAttempts = 0;
     let authenticator;
 
     function sendDBRequest(params) {
-        console.log('worker sending request', params);
+        // console.log('worker sending request', params);
         return scope.connection.socket.write(params);
     }
 
@@ -46,7 +46,14 @@ function collector(scope) {
     }
 
     function handleClientRequest(payload) {
-        // console.log('worker got', payload);
+        switch(payload.opcode) {
+            case 'query': 
+                payload.body = encoder.query(payload.body);
+                break;
+            default:
+                console.warn('opcode not found ', opcode);
+                return;
+        }
         return requestQueue.add(encoder.request(payload));
     }
 
