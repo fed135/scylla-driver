@@ -80,6 +80,18 @@ The `level` being passed to debug can be `verbose`, `info`, `warning` or `error`
 
 I am always looking for maintainers. Reach out to me to get involved. 
 
+## Tests
+
+### Requirements
+Once you have a database setup with a keyspace named "test" and a table "users".  
+Help can be found in the [wiki](https://github.com/fed135/scylla-driver/wiki).
+
+### Usage
+Tests can be run with:
+
+```bash
+npm run test
+```
 
 ## License 
 

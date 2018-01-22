@@ -21,10 +21,13 @@
     "uuid": "^3.2.1"
   },
   "devDependencies": {
+    "@types/node": "^9.3.0",
     "cassandra-driver": "^3.3.0",
     "chai": "^4.1.0",
     "mocha": "^4.1.0",
-    "sinon": "^4.1.0"
+    "sinon": "^4.1.0",
+    "ts-node": "^4.1.0",
+    "typescript": "^2.6.2"
   },
   "repository": {
     "type": "git",
@@ -34,7 +37,7 @@
     "url": "https://github.com/fed135/scylladb/issues"
   },
   "scripts": {
-    "test": "mocha test/unit test/integration/short -R spec -t 5000",
+    "test": "ts-node test/index.ts",
     "eslint": "eslint ./src"
   }
 }
