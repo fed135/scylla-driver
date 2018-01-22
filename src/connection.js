@@ -9,6 +9,7 @@ const encoder = require('./encoder');
 const decoder = require('./decoder');
 const auth = require('./authentication');
 const queue = require('./queue');
+const EventEmitter = require('events').EventEmitter;
 
 /* Local variables -----------------------------------------------------------*/
 
@@ -17,35 +18,53 @@ const maxRetryAttempts = 10;
 
 /* Methods -------------------------------------------------------------------*/
 
-function collector(scope) {
-    // console.log('\n\nworker', scope.host);
-    const requestQueue = queue(sendDBRequest, { locked: true });
-    let reconnectAttempts = 0;
-    let authenticator;
+function createConnection(options) {
+    const scope = {
+        socket: null,
+        status: 'startup',
+        requestQueue: null,
+        reconnectAttempts: 0,
+        authenticator: null,
+    };
+
+    return Object.assign(scope, options, connection(scope), EventEmitter.prototype);
+}
+
+function connection(scope) {
+    scope.requestQueue = queue(sendDBRequest, { locked: true });
 
     function sendDBRequest(params) {
         // console.log('worker sending request', params);
-        return scope.connection.socket.write(params);
+        return scope.socket.write(params);
     }
 
     function handleDBResponse(payload) {
+        let caret = 0;
+        while (caret < payload.length) {
+            const frameSize = 9 + decoder.int32(payload.slice(caret + 5, caret + 9));
+            routeDBResponse(payload.slice(caret, caret + frameSize));
+            caret += frameSize;
+        }
+    }
+
+    function routeDBResponse(payload) {
         const decoded = decoder.request(payload);
         if (decoded.header.opcode === 'result') {
-            process.send(decoded);
+            scope.emit('data', decoded);
         }
         else if (auth.authOperations.includes(decoded.header.opcode)) {
-            authenticator.step(decoded);
+            scope.authenticator.step(decoded);
         }
         else if (decoded.header.opcode === 'ready') {
             scope.status = 'ready';
-            requestQueue.unlock();
+            scope.requestQueue.unlock();
         }
         else {
             handleDBEvent(decoded);
         }
     }
 
-    function handleClientRequest(payload) {
+    function send(payload) {
         switch(payload.opcode) {
             case 'query': 
                 payload.body = encoder.query(payload.body);
@@ -54,7 +73,7 @@ function collector(scope) {
                 console.warn('opcode not found ', opcode);
                 return;
         }
-        return requestQueue.add(encoder.request(payload));
+        return scope.requestQueue.add(encoder.request(payload));
     }
 
     function handleDBEvent(payload) {
@@ -63,23 +82,13 @@ function collector(scope) {
 
     function connect(options) {
         scope.status = 'startup';
-        if (scope.host[0] !== '/') {
-            scope.connection = {
-                type: 'tcp',
-                socket: net.connect(scope.port, scope.host)
-            };
-        } else {
-            scope.connection = {
-                type: 'ipc',
-                socket: net.connect(scope.host)
-            };
-        }
+        if (scope.host[0] !== '/') scope.socket = net.connect(scope.port, scope.host);
+        else scope.socket = net.connect(scope.host);
 
-        scope.connection.socket.on('data', handleDBResponse);
-        scope.connection.socket.on('error', handleError);
-        scope.connection.socket.on('close', handleError);
-        process.on('message', handleClientRequest);
-        authenticator = auth.sequence(scope, sendDBRequest).begin();
+        scope.socket.on('data', handleDBResponse);
+        scope.socket.on('error', handleError);
+        scope.socket.on('close', handleError);
+        scope.authenticator = auth.sequence(scope, sendDBRequest).begin();
 
         return scope;
     }
@@ -96,25 +105,9 @@ function collector(scope) {
         setTimeout(connect, delay);
     }
 
-    return { handleClientRequest, handleDBResponse, sendDBRequest, connect };
-}
-
-function init() {
-    const scope = collector({
-        host: process.argv[2],
-        port: process.argv[3],
-        compression: process.argv[4],
-        cqlVersion: process.argv[5],
-        connection: null,
-        status: 'startup',
-    });
-
-    process.title = 'scylla-worker';
-    scope.connect();
-
-    return scope;
+    return { send, connect };
 }
 
 /* Exports -------------------------------------------------------------------*/
 
-module.exports = init();
+module.exports = createConnection;

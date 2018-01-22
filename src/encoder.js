@@ -6,15 +6,16 @@
 
 const snappy = require('snappy');
 const protocol = require('./protocol');
+const defaults = require('./defaults');
 
 /* Methods -------------------------------------------------------------------*/
 
 function frameHeader(options) {
     return Buffer.from([
-        ...uint8(protocol.meta.version), 
-        ...uint8(protocol.flagsOut[options.flags] || 0), 
+        ...int8(protocol.meta.version), 
+        ...int8(protocol.flagsOut[options.flags] || 0), 
         ...int16((options.streamId === undefined) ? 0 : options.streamId),
-        ...uint8(protocol.opcodesOut[options.opcode]),
+        ...int8(protocol.opcodesOut[options.opcode]),
         ...int32(options.bodyLength)
     ]);
 }
@@ -29,6 +30,10 @@ function uint16(val) {
 
 function uint32(val) {
     return [val >> 24, val >> 16, val >> 8, val & 0xff];
+}
+
+function int8(val) {
+    return [(val < 0) ? 256 + val : val];
 }
 
 function int16(val) {
@@ -59,11 +64,11 @@ function stringMap(obj) {
     return ret;
 }
 
-function query(params) {
+function query(body) {
     // console.log(params);
     return [
-        ...longString(params.statement),
-        ...uint16(protocol.queriesOut.consistencies[params.options.consistency]),
+        ...longString(body.statement),
+        ...uint16(protocol.queriesOut.consistencies[body.options.consistency || defaults.queryOptions.consistency]),
         0   // TODO: Prepared queries
     ];
 }

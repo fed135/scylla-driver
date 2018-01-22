@@ -4,17 +4,16 @@
 
 /* Requires ------------------------------------------------------------------*/
 
-const path = require('path');
-const fork = require('child_process').fork;
+const connection = require('./connection');
 
 /* Methods -------------------------------------------------------------------*/
 
 function host(scope, hostname) {
     let roundRobinIndex = 0;
-    const connections = Array.from(Array(scope.options.workers)).map(spawn);
-    
-    const streams = Array.from(Array(0xffff >> 1));
+    const streams = Array.from(Array(0xffff >> 1)).fill(null);
     const streamsQueue = [];
+    const connections = Array.from(Array(scope.options.connections.local))
+        .map(spawn);
 
     function getConnection() {
         const connection = connections[roundRobinIndex];
@@ -26,7 +25,7 @@ function host(scope, hostname) {
 
     function getStream() {
         for (let i = 0; i < 0xffff >> 1; i++) {
-            if (!streams[i]) {
+            if (streams[i] === null) {
                 streams[i] = true;
                 return i + 1;
             }
@@ -35,22 +34,18 @@ function host(scope, hostname) {
     }
 
     function spawn() {
-        const connection = {
-            worker: fork(path.resolve(__dirname, 'worker'), [
-                hostname,
-                scope.options.port,
-                `${scope.options.compression}`,
-                scope.options.cqlVersion
-            ]),
-        };
-        connection.worker.on('message', handleResponse);
-        connection.worker.on('error', handleError);
+        const worker = connection({
+            host: hostname,
+            port: scope.options.port,
+            options: scope.options
+        });
+        worker.on('data', handleResponse);
+        worker.on('error', handleError);
 
-        return connection;
+        return worker.connect();
     }
 
     function handleResponse(response) {
-        // console.log('host got', response)
         let handle;
         if (response.header.streamId < 1 && streamsQueue.length > 0) {
             handle = streamsQueue.shift();
@@ -84,7 +79,7 @@ function host(scope, hostname) {
             });
         }
 
-        getConnection().worker.send({
+        getConnection().send({
             streamId: id,
             opcode: op,
             body: params,

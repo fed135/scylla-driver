@@ -7,11 +7,10 @@
 module.exports = {
   hosts: [],
   port: 9042,
-  workers: 10,
-  /*policies: {
-    loadBalancing: 'DCAwareRoundRobinPolicy',
-    reconnection: 'ExponantialReconnect',
-  },*/
+  connections: {
+    local: 10,
+    remote: 0
+  },
   queryOptions: {
     consistency: 'localOne',
     limit: 1000,
