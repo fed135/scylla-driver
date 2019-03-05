@@ -1,5 +1,7 @@
 # ScyllaDB Node.js Driver
 
+# Work in progress - do not use!
+
 [![ScyllaDB](https://img.shields.io/npm/v/scylladb.svg)](https://www.npmjs.com/package/scylladb)
 [![Node](https://img.shields.io/badge/node->%3D4.0-blue.svg)](https://nodejs.org)
 [![Build Status](https://travis-ci.org/fed135/scylladb.svg?branch=master)](https://travis-ci.org/fed135/scylladb)
