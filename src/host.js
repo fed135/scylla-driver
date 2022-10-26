@@ -1,5 +1,5 @@
 /**
- * The list of hosts
+ * A single host config
  */
 
 /* Requires ------------------------------------------------------------------*/
@@ -37,7 +37,8 @@ function host(scope, hostname) {
         const worker = connection({
             host: hostname,
             port: scope.options.port,
-            options: scope.options
+            options: scope.options,
+            cache: scope.localCache,
         });
         worker.on('data', handleResponse);
         worker.on('error', handleError);
