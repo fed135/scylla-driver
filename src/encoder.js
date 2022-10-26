@@ -6,7 +6,6 @@
 
 const snappy = require('snappy');
 const protocol = require('./protocol');
-const defaults = require('./defaults');
 
 /* Methods -------------------------------------------------------------------*/
 
@@ -65,17 +64,34 @@ function stringMap(obj) {
 }
 
 function query(body) {
-    // console.log(params);
     return [
         ...longString(body.statement),
-        ...uint16(protocol.queriesOut.consistencies[body.options.consistency || defaults.queryOptions.consistency]),
-        0   // TODO: Prepared queries
+        ...uint16(protocol.queriesOut.consistencies[body.options.consistency]),
+        0,
+    ];
+}
+
+function prepare(body) {
+    return [
+        ...longString(body.statement),
+    ];
+}
+
+function execute(body) {
+    return [
+        ...shortString(body.preparedId),
+        ...uint16(protocol.queriesOut.consistencies[body.options.consistency]),
     ];
 }
 
 function longString(str) {
-    const bytes = Array.from(new Buffer(str));
+    const bytes = [...Buffer.from(str)];
     return [...int32(bytes.length), ...bytes];
+}
+
+function shortString(str) {
+    const bytes = [...Buffer.from(str)];
+    return [...int16(bytes.length), ...bytes];
 }
 
 function string(encoding, str) {
@@ -95,4 +111,4 @@ function request(params, options = {}) {
 
 /* Exports -------------------------------------------------------------------*/
 
-module.exports = { request, frameHeader, stringMap, longString, query };
+module.exports = { request, frameHeader, stringMap, longString, query, prepare, execute };

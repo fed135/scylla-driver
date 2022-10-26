@@ -9,18 +9,45 @@ const hosts = require('./hosts');
 
 /* Methods -------------------------------------------------------------------*/
 
-function client(scope, hosts) {
-    let loadBalancerIndex = 0;
+function client(scope, hostList) {
 
-    function execute(statement, vars, options) {
+    function query(statement, vars, options) {
         if (options === undefined) {
             options = vars || {};
             vars = [];
         }
-        return hosts.select().execute('query', {
+
+        const finalQueryOptions = Object.assign({}, scope.options.queryOptions, options);
+
+        if (finalQueryOptions.prepare === true) {
+            if (!(statement in localCache.localPreparedStatements)) {
+                return prepare(statement).then((preparedId) => {
+                    localCache.localPreparedStatements[statement] = preparedId;
+
+                    return execute(statement, vars, finalQueryOptions);
+                });
+            }
+            return execute(statement, vars, finalQueryOptions);
+        }
+
+        return hostList.select().execute('query', {
             statement,
             vars,
-            options: Object.assign({}, scope.options.queryOptions, options)
+            options: finalQueryOptions,
+        });
+    }
+
+    function execute(statement, vars, options) {
+        return hostList.select().execute('execute', {
+            preparedId: localCache.localPreparedStatements[statement],
+            vars,
+            options,
+        });
+    }
+
+    function prepare(statement) {
+        return hostList.select().execute('prepare', {
+            statement
         });
     }
 
@@ -34,15 +61,16 @@ function client(scope, hosts) {
 
     function init() {
         // Returns a clean interface
-        return { execute, stream, destroy };
+        return { query, stream, destroy, execute: query };
     }
 
     // Exposes internals for unit testing
-    return { execute, stream, destroy, init };
+    return { query, stream, destroy, init, execute, prepare };
 }
 
 function create(options) {
     const scope = {
+        localCache: { localPreparedStatements: {} },
         options: Object.assign({}, defaults, options)
     };
 

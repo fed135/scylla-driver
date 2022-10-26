@@ -1,5 +1,5 @@
 const scylla = require('../');
-const uuid = require('uuid/v4');
+const crypto = require('crypto');
 const cassandra = require('cassandra-driver');
 
 const db = scylla.createClient({
@@ -21,7 +21,7 @@ let completed = 0;
 //console.log('\n');
 
 for(let i = 0; i<totalRequests; i++) {
-    db.execute('INSERT INTO test.users (id, fisrt_name, last_name, age) VALUES (' + uuid() + ', \'tom\', \'sawyer\', 99)')
+    db.query('INSERT INTO test.users (id, fisrt_name, last_name, age) VALUES (' + crypto.randomUUID() + ', \'tom\', \'sawyer\', 99)')
         .then(handleComplete); 
 }
 

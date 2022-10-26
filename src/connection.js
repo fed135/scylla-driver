@@ -69,6 +69,12 @@ function connection(scope) {
             case 'query': 
                 payload.body = encoder.query(payload.body);
                 break;
+            case 'prepare': 
+                payload.body = encoder.prepare(payload.body);
+                break;
+            case 'execute':
+                payload.body = encoder.execute(payload.body);
+                break;
             default:
                 console.warn('opcode not found ', opcode);
                 return;

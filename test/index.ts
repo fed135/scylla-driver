@@ -25,7 +25,7 @@ const loadTest = async (repeatCount: number) => {
   console.log(`Load test starting with ${repeatCount} queries...`);
   const start = Date.now();
   for (let i = 0; i <= repeatCount; i++) {
-    await db.execute('SELECT * FROM test.users');
+    await db.query('SELECT * FROM test.users');
   }
   console.log(`Load test took ${Date.now() - start}ms for ${repeatCount} queries!`);
 
