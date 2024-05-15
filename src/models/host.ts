@@ -2,13 +2,10 @@
  * A single host config
  */
 
-/* Requires ------------------------------------------------------------------*/
+import {createConnection} from './connection';
 
-const connection = require('./connection');
 
-/* Methods -------------------------------------------------------------------*/
-
-function host(scope, hostname) {
+export function host(scope, hostname) {
     let roundRobinIndex = 0;
     const streams = Array.from(Array(0xffff >> 1)).fill(null);
     const streamsQueue = [];
@@ -34,7 +31,7 @@ function host(scope, hostname) {
     }
 
     function spawn() {
-        const worker = connection({
+        const worker = createConnection({
             host: hostname,
             port: scope.options.port,
             options: scope.options,
@@ -91,7 +88,3 @@ function host(scope, hostname) {
 
     return { execute };
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = host;

@@ -12,17 +12,20 @@
     "cassandra"
   ],
   "license": "Apache-2.0",
-  "dependencies": {
-    "snappy": "^7.2.0"
-  },
+  "dependencies": {},
   "devDependencies": {
-    "@types/node": "^18.11.0",
+    "@types/jest": "^29.5.0",
+    "@types/node": "^20.12.0",
+    "@typescript-eslint/eslint-plugin": "^7.9.0",
+    "@typescript-eslint/parser": "^7.9.0",
     "cassandra-driver": "^4.6.0",
-    "jest": "^29.2.2",
-    "ts-jest": "^29.0.3",
-    "ts-node": "^10.9.0",
-    "typescript": "^4.8.4"
+    "eslint": "^8.56.0",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
   },
+  "main": "bin/index",
   "repository": {
     "type": "git",
     "url": "https://github.com/fed135/scylladb.git"
@@ -30,8 +33,31 @@
   "bugs": {
     "url": "https://github.com/fed135/scylladb/issues"
   },
+  "contributors": [
+    "frederic charette <fredericcharette@gmail.com>"
+  ],
+  "typings": "./types.d.ts",
+  "author": "frederic charette <fredericcharette@gmail.com>",
+  "files": [
+    "bin",
+    "types.d.ts"
+  ],
   "scripts": {
-    "test": "ts-node test/index.ts",
-    "eslint": "eslint ./src"
+    "test": "npm run test:unit && npm run build && npm run test:integration",
+    "test:unit": "jest ./src",
+    "test:integration": "jest ./test",
+    "lint": "eslint ./",
+    "build": "echo \"TODO\""
+  },
+  "jest": {
+    "preset": "ts-jest",
+    "testEnvironment": "node",
+    "transform": {
+      "^.+\\.tsx?$": [
+      "ts-jest", {
+        "diagnostics": false,
+        "isolatedModules": true
+      }]
+    }
   }
 }

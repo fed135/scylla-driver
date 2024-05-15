@@ -2,12 +2,10 @@
  * Generic method queue
  */
 
-/* Methods -------------------------------------------------------------------*/
-
-function queue(method, options = {}) {
+export function queue(method, options: {locked?: boolean} = {}) {
     const list = [];
     const self = { add, step, lock, unlock };
-    let locked = options.locked || false;
+    let locked = options.locked || false;
 
     function lock() {
         locked = true;
@@ -36,7 +34,3 @@ function queue(method, options = {}) {
 
     return self;
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = queue;

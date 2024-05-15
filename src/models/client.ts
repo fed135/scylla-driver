@@ -4,12 +4,35 @@
 
 /* Requires ------------------------------------------------------------------*/
 
-const defaults = require('./defaults');
-const hosts = require('./hosts');
+import defaults from '../defaults';
+import {host} from './host';
 
 /* Methods -------------------------------------------------------------------*/
 
-function client(scope, hostList) {
+export function client(scope) {
+    const hostList = scope.options.hosts.map(host.bind(null, scope));
+    let roundRobinIndex = 0;
+
+    function addHost() {
+
+    }
+
+    function removeHost() {
+
+    }
+
+    function selectHost() {
+        const hostname = hostList[roundRobinIndex];
+        roundRobinIndex++;
+        
+        if (roundRobinIndex >= hostList.length) roundRobinIndex = 0;
+        return hostname;
+    }
+
+    function topology() {
+        // Should be returned by the service
+        // return JSON.parse(JSON.stringify(list));
+    }
 
     function query(statement, vars, options) {
         if (options === undefined) {
@@ -20,9 +43,9 @@ function client(scope, hostList) {
         const finalQueryOptions = Object.assign({}, scope.options.queryOptions, options);
 
         if (finalQueryOptions.prepare === true) {
-            if (!(statement in localCache.localPreparedStatements)) {
+            if (!(statement in scope.localCache.localPreparedStatements)) {
                 return prepare(statement).then((preparedId) => {
-                    localCache.localPreparedStatements[statement] = preparedId;
+                    scope.localCache.localPreparedStatements[statement] = preparedId;
 
                     return execute(statement, vars, finalQueryOptions);
                 });
@@ -39,7 +62,7 @@ function client(scope, hostList) {
 
     function execute(statement, vars, options) {
         return hostList.select().execute('execute', {
-            preparedId: localCache.localPreparedStatements[statement],
+            preparedId: scope.localCache.localPreparedStatements[statement],
             vars,
             options,
         });
@@ -68,15 +91,11 @@ function client(scope, hostList) {
     return { query, stream, destroy, init, execute, prepare };
 }
 
-function create(options) {
+export function createClient(options) {
     const scope = {
         localCache: { localPreparedStatements: {} },
         options: Object.assign({}, defaults, options)
     };
 
-    return client(scope, hosts(scope));
+    return client(scope);
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = create;

@@ -2,23 +2,14 @@
  * Connection worker
  */
 
-/* Requires ------------------------------------------------------------------*/
+import {connect as connectSocket} from 'net';
+import {query, prepare, execute, request as encodeRequest} from '../commons/encoder';
+import {int32, request as decodeRequest} from '../commons/decoder';
+import {authOperations, sequence} from '../components/authentication';
+import {queue} from '../commons/queue';
+import {EventEmitter} from 'node:events';
 
-const net = require('net');
-const encoder = require('./encoder');
-const decoder = require('./decoder');
-const auth = require('./authentication');
-const queue = require('./queue');
-const EventEmitter = require('events').EventEmitter;
-
-/* Local variables -----------------------------------------------------------*/
-
-const baseReconnectTime = 100;
-const maxRetryAttempts = 10;
-
-/* Methods -------------------------------------------------------------------*/
-
-function createConnection(options) {
+export function createConnection(options) {
     const scope = {
         socket: null,
         status: 'startup',
@@ -30,7 +21,7 @@ function createConnection(options) {
     return Object.assign(scope, options, connection(scope), EventEmitter.prototype);
 }
 
-function connection(scope) {
+export function connection(scope) {
     scope.requestQueue = queue(sendDBRequest, { locked: true });
 
     function sendDBRequest(params) {
@@ -41,18 +32,18 @@ function connection(scope) {
     function handleDBResponse(payload) {
         let caret = 0;
         while (caret < payload.length) {
-            const frameSize = 9 + decoder.int32(payload.slice(caret + 5, caret + 9));
+            const frameSize = 9 + int32(payload.slice(caret + 5, caret + 9));
             routeDBResponse(payload.slice(caret, caret + frameSize));
             caret += frameSize;
         }
     }
 
     function routeDBResponse(payload) {
-        const decoded = decoder.request(payload);
+        const decoded = decodeRequest(payload);
         if (decoded.header.opcode === 'result') {
             scope.emit('data', decoded);
         }
-        else if (auth.authOperations.includes(decoded.header.opcode)) {
+        else if (authOperations.includes(decoded.header.opcode)) {
             scope.authenticator.step(decoded);
         }
         else if (decoded.header.opcode === 'ready') {
@@ -67,19 +58,19 @@ function connection(scope) {
     function send(payload) {
         switch(payload.opcode) {
             case 'query': 
-                payload.body = encoder.query(payload.body);
+                payload.body = query(payload.body, scope);
                 break;
             case 'prepare': 
-                payload.body = encoder.prepare(payload.body);
+                payload.body = prepare(payload.body);
                 break;
             case 'execute':
-                payload.body = encoder.execute(payload.body);
+                payload.body = execute(payload.body, scope);
                 break;
             default:
-                console.warn('opcode not found ', opcode);
+                console.warn('opcode not found ', payload.opcode);
                 return;
         }
-        return scope.requestQueue.add(encoder.request(payload));
+        return scope.requestQueue.add(encodeRequest(payload));
     }
 
     function handleDBEvent(payload) {
@@ -88,23 +79,29 @@ function connection(scope) {
 
     function connect(options) {
         scope.status = 'startup';
-        if (scope.host[0] !== '/') scope.socket = net.connect(scope.port, scope.host);
-        else scope.socket = net.connect(scope.host);
+        if (scope.host[0] !== '/') scope.socket = connectSocket(scope.port, scope.host);
+        else scope.socket = connectSocket(scope.host);
 
+        scope.socket.on('connect', handleConnection);
         scope.socket.on('data', handleDBResponse);
         scope.socket.on('error', handleError);
         scope.socket.on('close', handleError);
-        scope.authenticator = auth.sequence(scope, sendDBRequest).begin();
+        scope.authenticator = sequence(scope, sendDBRequest).begin();
 
         return scope;
+    }
+
+    function handleConnection() {
+        scope.reconnectAttempts = 0;
+        scope.status = 'connected';
     }
 
     function handleError(err) {
         console.log(err);
 
-        const delay = baseReconnectTime + (reconnectAttempts * baseReconnectTime) * 1.5;
-        reconnectAttempts++;
-        if (reconnectAttempts >= maxRetryAttempts) {
+        const delay = scope.baseReconnectTime + (scope.reconnectAttempts * scope.baseReconnectTime) * 1.5;
+        scope.reconnectAttempts++;
+        if (scope.reconnectAttempts >= scope.maxRetryAttempts) {
             throw new Error(`Maximum reconnect attempts reached for host ${scope.host}`);
         }
 
@@ -113,7 +110,3 @@ function connection(scope) {
 
     return { send, connect };
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = createConnection;

@@ -2,19 +2,15 @@
  * Protocol flag mapping 
  */
 
-/* Requires ------------------------------------------------------------------*/
+import  { flipMap, flipNested }  from '../dataStructures';
 
-const { flipMap, flipNested } = require('./utils');
-
-/* Local variables -----------------------------------------------------------*/
-
-const meta = {
+export const meta = {
     version:                    0x04,
     minSupported:               0x04,
     maxSupported:               0x05
 };
 
-const opcodesOut = {
+export const opcodesOut = {
     error:                      0x00,
     startup:                    0x01,
     ready:                      0x02,
@@ -34,14 +30,19 @@ const opcodesOut = {
     authSuccess:                0x10,
 };
 
-const flagsOut = {
+export const opcodesIn = flipMap(opcodesOut);
+
+export const flagsOut = {
     compression:                0x01,
     tracing:                    0x02,
     customPayload:              0x04,
     warning:                    0x08
 };
 
-const queriesOut = {
+export const flagsIn = flipMap(flagsOut);
+
+
+export const queriesOut = {
     consistencies: {
         any:                    0x00,
         one:                    0x01,
@@ -84,7 +85,9 @@ const queriesOut = {
     }
 };
 
-const dataOut = {
+export const queriesIn = flipNested(queriesOut);
+
+export const dataOut = {
     types: {
         custom:                 0x0000,
         ascii:                  0x0001,
@@ -120,24 +123,12 @@ const dataOut = {
     }
 };
 
-const eventsOut = {
+export const dataIn = flipNested(dataOut);
+
+export const eventsOut = {
     topologyChange:             'TOPOLOGY_CHANGE',
     statusChange:               'STATUS_CHANGE',
     schemaChange:               'SCHEMA_CHANGE'
 };
 
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = {
-    meta,
-    queriesIn: flipNested(queriesOut),
-    queriesOut,
-    dataIn: flipNested(dataOut),
-    dataOut,
-    opcodesIn: flipMap(opcodesOut),
-    opcodesOut,
-    flagsIn: flipMap(flagsOut),
-    flagsOut,
-    eventsIn: flipMap(eventsOut),
-    eventsOut
-};
+export const eventsIn = flipMap(eventsOut);

@@ -2,58 +2,56 @@
  * Encoder and compressor
  */
 
-/* Requires ------------------------------------------------------------------*/
+const v4 = require('./protocol/v4');
+const v5 = require('./protocol/v5');
 
-const snappy = require('snappy');
-const protocol = require('./protocol');
+const protocols = {4: v4, 5: v5}
 
-/* Methods -------------------------------------------------------------------*/
-
-function frameHeader(bytes) {
+export function frameHeader(bytes, options) {
     return {
-        version: protocol.meta.version, 
-        flags: protocol.flagsIn[int8(bytes[1])], 
+        version: protocols[options.protocolVersion || 4].meta.version, 
+        flags: protocols[options.protocolVersion || 4].flagsIn[int8(bytes[1])], 
         streamId: int16([bytes[2], bytes[3]]),
-        opcode: protocol.opcodesIn[int8(bytes[4])],
+        opcode: protocols[options.protocolVersion || 4].opcodesIn[int8(bytes[4])],
         bodyLength: int32(bytes.slice(5, 9))
     };
 }
 
-function uint8(byte) {
+export function uint8(byte) {
     return byte | 0;
 }
 
-function uint16(bytes) {
+export function uint16(bytes) {
     return bytes[0] << 8 | bytes[1];
 }
 
-function uint32(bytes) {
+export function uint32(bytes) {
     return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | (bytes[3]);
 }
 
-function int8(byte) {
+export function int8(byte) {
     return (!(byte & 0x80))?byte:((0xff - byte + 1) * -1);
 }
 
-function int16(bytes) {
+export function int16(bytes) {
     const val = (bytes[0] << 8) | bytes[1];
     return (val & 0x8000) ? val | 0xFFFF0000 : val;
 }
 
-function int32(bytes) {
+export function int32(bytes) {
     return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | (bytes[3]);
 }
 
 function content(bytes, options) {
-    if (options.compression === 'snappy') {
-        return snappy.uncompressSync(bytes);
+    if (options.compression && options.compression.uncompressSync) {
+        return options.compression.uncompressSync(bytes);
     }
     return bytes.toString();
 }
 
-function request(bytes, options = {}) {
+export function request(bytes, options = {}) {
     return {
-        header: frameHeader(bytes),
+        header: frameHeader(bytes, options),
         body: content(bytes.slice(10), options)
     };
 }

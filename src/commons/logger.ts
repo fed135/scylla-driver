@@ -2,8 +2,6 @@
  * Logging util
  */
 
-/* Methods -------------------------------------------------------------------*/
-
 function print(level) {
     return function consolePrint(msg) {
         const enabled = ((typeof process === 'object' && process.env.NODE_DEBUG) || '').indexOf('scylla') > -1;
@@ -11,10 +9,6 @@ function print(level) {
     }
 }
 
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = {
-    log: print('log'),
-    warn: print('warning'),
-    error: print('error'),
-};
+export const log = print('log');
+export const warn = print('warning');
+export const error = print('error');
