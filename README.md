@@ -6,8 +6,6 @@
 
 **Disclaimer** I am not associated in any way with [ScyllaDB](https://github.com/scylladb) or [Datastax](https://github.com/datastax).
 
-Loosely based on the current [datastax cassandra driver](https://github.com/datastax/nodejs-driver), it focuses on performance and a clean interface.
-
 ---
 
 ## Install
@@ -19,28 +17,24 @@ $ npm install scylladb
 
 ## Usage
 
+- [API documentation](https://github.com/fed135/scylla-driver/wiki/API-Documentation)
+
 ### Connecting
 
-```javascript
-const scylladb = require('scylladb');
-const client = scylladb.createClient({
+```typescript
+import {createClient} from 'scylladb';
+
+const client = createClient({
   hosts: ['0.0.0.0', '0.0.0.1'],
   keyspace: 'ks1'
 });
 ```
 
-**Options**
-
-Fields | Description
---- | ---
-hosts | List of hosts to connect to. Can be an IP, a fqdn or a unix socket (required)
-keyspace | The keyspace to select (required)
-
 ### Querying
 
-Querying has been streamlined to now only return a Promise.
+Query methods return a **Promise**.
 
-```javascript
+```typescript
 // Simple statements
 client.query('SELECT * FROM users')
   .then(result => console.log(`User with email ${result.rows[0].email}`));
@@ -54,7 +48,7 @@ client.query('SELECT name, email FROM users WHERE key = ?', [ 'someone' ])
 
 It can be **piped** downstream and provides automatic pause/resume logic (it buffers when not read).
 
-```javascript
+```typescript
 const stream = client.stream('SELECT time, val FROM temperature WHERE station_id=', [ 'abc' ]);
 
 stream.on('readable', function () {
@@ -77,22 +71,19 @@ stream.on('readable', function () {
 
 ## Logging
 
-ScyllaDB driver uses [debug](https://github.com/visionmedia/debug)
+ScyllaDB driver uses the `NODE_DEBUG` environment variable.
 
 ```
-DEBUG=scylladb:<level>
+NODE_DEBUG=scylladb:<level>
 ```
 
 The `level` being passed to debug can be `verbose`, `info`, `warning` or `error`. If no level is specified, the default setting is `warning`.
 
 
-## Contribute
-
-I am always looking for maintainers. Reach out to me to get involved. 
-
 ## Tests
 
 Once you have a database setup with a keyspace named "test" and a table "users".  
+
 Help can be found in the [wiki](https://github.com/fed135/scylla-driver/wiki).
 
 
@@ -146,6 +137,10 @@ In order to keep the driver performant and reduce complexity a few choices were 
   - Scylla generally has fewer and shorter gc cycles
 - Query retrying
   - Must be handled in app design
+
+## Contribute
+
+I am always looking for help. Reach out to get involved!
 
 ## License 
 
