@@ -57,14 +57,21 @@ It can be **piped** downstream and provides automatic pause/resume logic (it buf
 ```javascript
 const stream = client.stream('SELECT time, val FROM temperature WHERE station_id=', [ 'abc' ]);
 
-stream.on('row', (row) => {
-  stream.pause();
-  console.log(`time ${row.time} and value ${row.value}`);
-  stream.resume();
-});
-
-stream.on('end', () => console.log('stream ended')); 
-stream.on('error', err => console.log(`Error: ${err}`));
+stream.on('readable', function () {
+    // readable is emitted as soon a row is received and parsed
+    let row;
+    while (row = this.read()) {
+      stream.pause();
+      console.log(`time ${row.time} and value ${row.value}`);
+      stream.resume();
+    }
+  })
+  .on('end', function () {
+    // emitted when all rows have been retrieved and read
+  })
+  .on('error', function (err) {
+    console.log(`Error: ${err}`)
+  });
 ```
 
 
@@ -85,16 +92,60 @@ I am always looking for maintainers. Reach out to me to get involved.
 
 ## Tests
 
-### Requirements
 Once you have a database setup with a keyspace named "test" and a table "users".  
 Help can be found in the [wiki](https://github.com/fed135/scylla-driver/wiki).
 
-### Usage
-Tests can be run with:
 
 ```bash
 npm run test
 ```
+
+## TODO
+
+- [x] Zero-copy stream reading
+- [ ] Refactor (figure best paradigm to reduce instantiation and complexity while preventing user access to internals)
+- [ ] Query options
+- [ ] Query stats / timeouts
+- [ ] Cassandra types marshalling
+- [ ] Prepared statements
+- [ ] Streaming queries
+- [ ] Query buffering and QueryContext (attempt to reuse same connection to send multiple frames at once)
+- [ ] Transactions (Batch queries)
+- [ ] Cluster topology
+- [ ] Connection pooling and load balancing
+- [ ] Host selection and sharding
+- [ ] Schema loading
+- [ ] Dynamic types
+- [ ] Geospatial points
+- [ ] Authentication flows
+- [ ] TLS/SSL
+- [ ] Binary API compatibility
+- [ ] Query warnings (server) and static statement validation (client)
+- [ ] User-defined functions and aggregates
+- [ ] Unit tests
+
+## Features from the Datastax driver that will not be supported
+
+In order to keep the driver performant and reduce complexity a few choices were made to strip or replace some of the features present in the Datastax Cassandra driver.
+
+- Address resolution
+  - Must be handled in app config
+- Concurrent execution
+  - QueryContext can be used to bundle requests and limit bandwidth
+- Datastax astra
+  - This driver focuses on Scylladb, might instead develop helpers for their DBAAS
+- Execution profiles
+  - Must be handled in app design
+- Mappers
+  - Must be handled in app design
+  - The library provides deep Typescript definitions and helpers to facilitate development 
+- Callbacks and async iterators
+  - The library will only support streams and promises
+- Speculative query executions
+  - This introduces a lot of complexity and unecessary load (queries cannot be aborted)
+  - Scylla generally has fewer and shorter gc cycles
+- Query retrying
+  - Must be handled in app design
 
 ## License 
 
