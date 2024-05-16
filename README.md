@@ -1,17 +1,12 @@
 # ScyllaDB Node.js Driver
 
-# Work in progress - do not use!
-
-[![ScyllaDB](https://img.shields.io/npm/v/scylladb.svg)](https://www.npmjs.com/package/scylladb)
-[![Node](https://img.shields.io/badge/node->%3D4.0-blue.svg)](https://nodejs.org)
-[![Build Status](https://travis-ci.org/fed135/scylladb.svg?branch=master)](https://travis-ci.org/fed135/scylladb)
+## Work in progress - do not use!
 
 ---
 
 **Disclaimer** I am not associated in any way with [ScyllaDB](https://github.com/scylladb) or [Datastax](https://github.com/datastax).
-Just a guy in need of a good solution to his problems.
 
-Loosely based on the current [datastax cassandra driver](https://github.com/datastax/nodejs-driver), it focuses on performance and a cleaner interface.
+Loosely based on the current [datastax cassandra driver](https://github.com/datastax/nodejs-driver), it focuses on performance and a clean interface.
 
 ---
 
@@ -25,8 +20,6 @@ $ npm install scylladb
 ## Usage
 
 ### Connecting
-
-Creating a client will spawn multiple forks to allow for more paralel work.
 
 ```javascript
 const scylladb = require('scylladb');
@@ -42,14 +35,18 @@ Fields | Description
 --- | ---
 hosts | List of hosts to connect to. Can be an IP, a fqdn or a unix socket (required)
 keyspace | The keyspace to select (required)
-workers | The number of connection workers to spawn per host (default: 10) 
 
 ### Querying
 
-Querying has been streamlined to now only return a Promise or a Stream.
+Querying has been streamlined to now only return a Promise.
 
 ```javascript
-client.execute('SELECT name, email FROM users WHERE key = ?', [ 'someone' ], { prepare: true })
+// Simple statements
+client.query('SELECT * FROM users')
+  .then(result => console.log(`User with email ${result.rows[0].email}`));
+
+// Automatically detects prepared steatements
+client.query('SELECT name, email FROM users WHERE key = ?', [ 'someone' ])
   .then(result => console.log(`User with email ${result.rows[0].email}`));
 ```
 
@@ -58,12 +55,16 @@ client.execute('SELECT name, email FROM users WHERE key = ?', [ 'someone' ], { p
 It can be **piped** downstream and provides automatic pause/resume logic (it buffers when not read).
 
 ```javascript
-client.stream('SELECT time, val FROM temperature WHERE station_id=', [ 'abc' ])
-  .on('readable', (rows) {
-    rows.forEach(row => console.log(`time ${row.time} and value ${row.value}`));
-  })
-  .on('end', () => console.log('stream ended')); 
-  .on('error', err => console.log(`Error: ${err}`));
+const stream = client.stream('SELECT time, val FROM temperature WHERE station_id=', [ 'abc' ]);
+
+stream.on('row', (row) => {
+  stream.pause();
+  console.log(`time ${row.time} and value ${row.value}`);
+  stream.resume();
+});
+
+stream.on('end', () => console.log('stream ended')); 
+stream.on('error', err => console.log(`Error: ${err}`));
 ```
 
 
@@ -72,10 +73,10 @@ client.stream('SELECT time, val FROM temperature WHERE station_id=', [ 'abc' ])
 ScyllaDB driver uses [debug](https://github.com/visionmedia/debug)
 
 ```
-DEBUG=scylladb:* 
+DEBUG=scylladb:<level>
 ```
 
-The `level` being passed to debug can be `verbose`, `info`, `warning` or `error`.
+The `level` being passed to debug can be `verbose`, `info`, `warning` or `error`. If no level is specified, the default setting is `warning`.
 
 
 ## Contribute
@@ -97,4 +98,4 @@ npm run test
 
 ## License 
 
-[Apache 2.0](LICENSE) (c) 2017 Frederic Charette
+[Apache 2.0](LICENSE) (c) 2017-2024 Frederic Charette

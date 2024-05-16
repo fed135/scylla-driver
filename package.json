@@ -46,8 +46,10 @@
     "test": "npm run test:unit && npm run build && npm run test:integration",
     "test:unit": "jest ./src",
     "test:integration": "jest ./test",
-    "lint": "eslint ./",
-    "build": "echo \"TODO\""
+    "lint": "eslint ./**/*.ts",
+    "lint:fix": "eslint ./**/*.ts --fix",
+    "build": "./node_modules/typescript/bin/tsc --outDir ./bin",
+    "dev": "node -r ./node_modules/ts-node/register/transpile-only ./test/workbench.ts"
   },
   "jest": {
     "preset": "ts-jest",

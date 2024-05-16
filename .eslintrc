@@ -6,7 +6,7 @@
     "import/resolver": {
       "node": {
         "extensions": [".js", ".ts"],
-        "moduleDirectory": ["node_modules", "packages/"]
+        "moduleDirectory": ["node_modules", "src/"]
       }
     }
   },

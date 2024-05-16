@@ -2,10 +2,9 @@
  * Encoder
  */
 
-const v4 = require('./protocol/v4');
-const v5 = require('./protocol/v5');
+import * as v4 from './protocol/v4';
 
-const protocols = {4: v4, 5: v5}
+const protocols = {4: v4, 5: v4}
 
 export function frameHeader(options) {
     return Buffer.from([
@@ -44,7 +43,7 @@ export function int32(val) {
 }
 
 function content(payload, options) {
-    const raw = new Buffer(payload);
+    const raw = Buffer.from(payload);
     if (options.compression && typeof options.compression.compressSync === 'function') {
         return options.compression.compressSync(raw);
     }
@@ -106,7 +105,3 @@ export function request(params, options = {}) {
     params.bodyLength = body.length;
     return Buffer.concat([frameHeader(params), body]);
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = { request, frameHeader, stringMap, longString, query, prepare, execute };

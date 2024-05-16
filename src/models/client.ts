@@ -2,16 +2,14 @@
  * Client methods
  */
 
-/* Requires ------------------------------------------------------------------*/
-
 import defaults from '../defaults';
 import {host} from './host';
-
-/* Methods -------------------------------------------------------------------*/
+import {EventEmitter} from 'node:events';
 
 export function client(scope) {
     const hostList = scope.options.hosts.map(host.bind(null, scope));
     let roundRobinIndex = 0;
+    const eventTarget = new EventEmitter();
 
     function addHost() {
 
@@ -44,7 +42,7 @@ export function client(scope) {
 
         if (finalQueryOptions.prepare === true) {
             if (!(statement in scope.localCache.localPreparedStatements)) {
-                return prepare(statement).then((preparedId) => {
+                return prepare(statement).then(preparedId => {
                     scope.localCache.localPreparedStatements[statement] = preparedId;
 
                     return execute(statement, vars, finalQueryOptions);
@@ -53,7 +51,7 @@ export function client(scope) {
             return execute(statement, vars, finalQueryOptions);
         }
 
-        return hostList.select().execute('query', {
+        return selectHost().execute('query', {
             statement,
             vars,
             options: finalQueryOptions,
@@ -61,7 +59,7 @@ export function client(scope) {
     }
 
     function execute(statement, vars, options) {
-        return hostList.select().execute('execute', {
+        return selectHost().execute('execute', {
             preparedId: scope.localCache.localPreparedStatements[statement],
             vars,
             options,
@@ -69,7 +67,7 @@ export function client(scope) {
     }
 
     function prepare(statement) {
-        return hostList.select().execute('prepare', {
+        return selectHost().execute('prepare', {
             statement
         });
     }
@@ -84,11 +82,11 @@ export function client(scope) {
 
     function init() {
         // Returns a clean interface
-        return { query, stream, destroy, execute: query };
+        return {...eventTarget, query, stream, destroy };
     }
 
     // Exposes internals for unit testing
-    return { query, stream, destroy, init, execute, prepare };
+    return {...eventTarget, query, stream, destroy, init, execute, prepare };
 }
 
 export function createClient(options) {

@@ -4,7 +4,7 @@
 
 export function queue(method, options: {locked?: boolean} = {}) {
     const list = [];
-    const self = { add, step, lock, unlock };
+    const self = { add, step, lock, unlock, size };
     let locked = options.locked || false;
 
     function lock() {
@@ -30,6 +30,10 @@ export function queue(method, options: {locked?: boolean} = {}) {
             step();
         }
         return self;
+    }
+
+    function size() {
+        return list.length;
     }
 
     return self;

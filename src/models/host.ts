@@ -3,22 +3,13 @@
  */
 
 import {createConnection} from './connection';
-
+import { roundRobin } from '../commons/loadBalancing';
 
 export function host(scope, hostname) {
-    let roundRobinIndex = 0;
     const streams = Array.from(Array(0xffff >> 1)).fill(null);
     const streamsQueue = [];
-    const connections = Array.from(Array(scope.options.connections.local))
-        .map(spawn);
-
-    function getConnection() {
-        const connection = connections[roundRobinIndex];
-        roundRobinIndex++;
-        
-        if (roundRobinIndex >= connections.length) roundRobinIndex = 0;
-        return connection;
-    }
+    const connections = [spawn()];
+    const loadBalancer = roundRobin(connections, scope.options, spawn);
 
     function getStream() {
         for (let i = 0; i < 0xffff >> 1; i++) {
@@ -45,16 +36,16 @@ export function host(scope, hostname) {
 
     function handleResponse(response) {
         let handle;
-        if (response.header.streamId < 1 && streamsQueue.length > 0) {
+        if (response.metadata.streamId < 1 && streamsQueue.length > 0) {
             handle = streamsQueue.shift();
         }
         else {
-            handle = streams[response.header.streamId - 1];
+            handle = streams[response.metadata.streamId - 1];
         }
 
         if (handle && handle.resolve) {
-            handle.resolve(response.body);
-            streams[response.header.streamId - 1] = null;
+            handle.resolve(response);
+            streams[response.metadata.streamId - 1] = null;
         }
     }
 
@@ -63,7 +54,7 @@ export function host(scope, hostname) {
     }
 
     function execute(op, params) {
-        const id = params.streamId || getStream();
+        const id = params.streamId || getStream();
         let promise;
 
         if (id === 0) {
@@ -77,7 +68,7 @@ export function host(scope, hostname) {
             });
         }
 
-        getConnection().send({
+        loadBalancer.getNextConnection().send({
             streamId: id,
             opcode: op,
             body: params,

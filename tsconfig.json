@@ -10,7 +10,9 @@
       "sourceMap": false,
       "allowJs": true,
       "target": "esnext",
-      "outDir": "dist"
+      "outDir": "dist",
+      "strict": false,
+      "skipLibCheck": true
   },
   "include": [
       "./src",

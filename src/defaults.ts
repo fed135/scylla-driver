@@ -18,9 +18,9 @@ export default {
   cqlVersion: '3.0.0', 
   // cassandraProtocol: (auto pick from server, supports v4 and v5) // https://docs.datastax.com/en/developer/java-driver/4.0/manual/core/native_protocol/index.html 
   maxPrepared: 5000,
+  baseReconnectTimeMs: 500,
+  maxRetryAttempts: 5,
   /*refreshSchemaDelay: 1000,
   isMetadataSyncEnabled: true
-  baseReconnectTime = 100;
-  maxRetryAttempts = 10;
   */
 }

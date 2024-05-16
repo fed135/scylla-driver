@@ -41,6 +41,16 @@ export const flagsOut = {
 
 export const flagsIn = flipMap(flagsOut);
 
+export const responseFlagsOut = {
+    globalTableSpecs:           0x0001,
+    hasMorePages:               0x0002,
+    noMetadata:                 0x0004,
+    metadataChanged:            0x0008,
+    continuousPaging:           0x40000000,
+    lastContinuousPage:         0x80000000,
+};
+
+export const responseFlagsIn = flipMap(responseFlagsOut);
 
 export const queriesOut = {
     consistencies: {
