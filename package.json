@@ -49,7 +49,8 @@
     "lint": "eslint ./**/*.ts",
     "lint:fix": "eslint ./**/*.ts --fix",
     "build": "./node_modules/typescript/bin/tsc --outDir ./bin",
-    "dev": "node -r ./node_modules/ts-node/register/transpile-only ./test/workbench.ts"
+    "dev": "node -r ./node_modules/ts-node/register/transpile-only ./test/workbench.ts",
+    "exp": "node -r ./node_modules/ts-node/register/transpile-only ./src-new/index.ts"
   },
   "jest": {
     "preset": "ts-jest",

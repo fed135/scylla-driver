@@ -74,10 +74,10 @@ stream.on('readable', function () {
 ScyllaDB driver uses the `NODE_DEBUG` environment variable.
 
 ```
-NODE_DEBUG=scylladb:<level>
+NODE_DEBUG=scylladb:<priority>
 ```
 
-The `level` being passed to debug can be `verbose`, `info`, `warning` or `error`. If no level is specified, the default setting is `warning`.
+The `priority` being passed to debug can be `info`, `warn` or `error`. If no level is specified, the default setting is `warn`.
 
 
 ## Tests
@@ -114,6 +114,8 @@ npm run test
 - [ ] Query warnings (server) and static statement validation (client)
 - [ ] User-defined functions and aggregates
 - [ ] Unit tests
+- [ ] Integration tests
+- [ ] Benchmark comparisons with Datastax driver
 
 ## Features from the Datastax driver that will not be supported
 

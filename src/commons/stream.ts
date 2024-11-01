@@ -1,5 +1,6 @@
 import * as v4 from './protocol/v4';
 import { toUTF8StringRange } from './dataStructures';
+import {unparse} from './uuid'
 
 const protocols = {4: v4, 5: v4}
 
@@ -71,59 +72,89 @@ export function streamDecode(stream: Array<number>, options) {
         }, {});
     }
 
-    function parseCell(range, type) {
+    function parseCell(type, chunkSize) {
+
         switch(type) {
-            case 'varchar': return toUTF8StringRange(stream, range[0], range[1]);
-            case 'int': return (stream[range[0]] << 24) | (stream[range[0]+1] << 16) | (stream[range[0]+2] << 8) | (stream[range[0]+3]);
+            case 'varchar': 
+                if (chunkSize > 0) {
+                    cursor += chunkSize;
+                    return toUTF8StringRange(stream, cursor - chunkSize, chunkSize);
+                }
+                return ''
+            case 'inet':
+                if (chunkSize === 4) return `${uint8()}.${uint8()}.${uint8()}.${uint8()}`;
+                cursor += chunkSize;
+                return toUTF8StringRange(stream,  cursor - chunkSize, chunkSize);
+            case 'int': return int32();
+            case 'uuid': 
+                cursor += chunkSize;
+                return unparse(stream, cursor - chunkSize);
+            default: 
+                cursor += chunkSize;
+                return `${type}`
         }
     }
 
-    const metadata = {
+    let metadata = {
         // Header (9 bytes)
         version: int8(),
         flags: protocols[options.protocolVersion || 4].flagsIn[int8()], 
         streamId: int16(),
         opcode: protocols[options.protocolVersion || 4].opcodesIn[int8()],
         bodyLength: int32(),
-
-        // Response meta ()
-        type: protocols[options.protocolVersion || 4].queriesIn.resultKind[int32()],
-        queryFlags: unmask(int32(), protocols[options.protocolVersion || 4].responseFlagsOut) as { globalTableSpecs: boolean },
-        columnsCount: int32(),
-        rowsCount: null,
-        newMetadataId: null,
-        globalTableSpecs: {
-            keyspace: '',
-            table: '',
-        },
-        columns: []
     };
 
-    if (metadata.queryFlags.globalTableSpecs) {
-        metadata.globalTableSpecs.keyspace = shortBytesString();
-        metadata.globalTableSpecs.table = shortBytesString();
-    }
-
-    while (metadata.columns.length < metadata.columnsCount && cursor < stream.length) {
-        const column = {
-            keyspace: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.keyspace : shortBytesString(),
-            table: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.table : shortBytesString(),
-            columnName: shortBytesString(),
-            columnType: protocols[options.protocolVersion || 4].dataIn.types[int16()],
-        };
-        metadata.columns.push(column);
-    }
-
-    metadata.rowsCount = int32();
     const rows = [];
 
-    while (rows.length < metadata.rowsCount && cursor < stream.length) {
-        const row = {};
-        for (let i = 0; i < metadata.columns.length; i++) {
-            const range = bytes();
-            row[metadata.columns[i].columnName] = parseCell(range, metadata.columns[i].columnType);
+    console.log('Opcode:', metadata.opcode)
+
+    if (metadata.opcode === 'result') {
+        // Response meta ()
+        metadata.type = protocols[options.protocolVersion || 4].queriesIn.resultKind[int32()];
+        metadata.queryFlags = unmask(int32(), protocols[options.protocolVersion || 4].responseFlagsOut) as { globalTableSpecs: boolean };
+        metadata.columnsCount = int32();
+        metadata.rowsCount = null;
+        metadata.newMetadataId = null;
+        metadata.globalTableSpecs = {
+            keyspace: '',
+            table: '',
+        };
+        metadata.columns = [];
+
+        if (metadata.queryFlags.globalTableSpecs) {
+            metadata.globalTableSpecs.keyspace = shortBytesString();
+            metadata.globalTableSpecs.table = shortBytesString();
         }
-        rows.push(row);
+
+        while (metadata.columns.length < metadata.columnsCount && cursor < stream.length) {
+            const column = {
+                keyspace: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.keyspace : shortBytesString(),
+                table: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.table : shortBytesString(),
+                columnName: shortBytesString(),
+                columnType: protocols[options.protocolVersion || 4].dataIn.types[int16()],
+            };
+            metadata.columns.push(column);
+        }
+
+        // Somehow... 2 bytes
+        int16() // TODO figure out why it's offset on the scylla cloud
+
+        console.log(stream.slice(cursor))
+
+        metadata.rowsCount = int32();
+
+        console.log(metadata)
+
+        while (rows.length < metadata.rowsCount && cursor < metadata.bodyLength) {
+            const row = {};
+            for (let i = 0; i < metadata.columns.length; i++) {
+                const chunkSize = int32();
+                row[metadata.columns[i].columnName] = parseCell(metadata.columns[i].columnType, chunkSize);
+            }
+            rows.push(row);
+        }
+
+        console.log('rows.length', rows.length, 'cursor', cursor , '/', stream.length)
     }
 
     return {

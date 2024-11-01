@@ -9,6 +9,7 @@ import {streamDecode} from '../commons/stream';
 import {authOperations, sequence} from '../components/authentication';
 import {queue} from '../commons/queue';
 import {EventEmitter} from 'node:events';
+import { toUTF8StringRange } from '../commons/dataStructures';
 
 export function createConnection(scope) {
     return connection({
@@ -28,29 +29,41 @@ export function connection(scope, emitter) {
         return scope.socket.write(params);
     }
 
-    function handleDBResponse(payload) {
-        // Split frames
-        let caret = 0;
-        while (caret < payload.length) {
-            const frameSize = 9 + int32(payload.slice(caret + 5, caret + 9));
-            routeDBResponse(payload.slice(caret, caret + frameSize));
-            caret += frameSize;
+    function handleDBResponse() {
+        let frame = [...scope.socket.read(9)]; // Read header by default
+        let totalSize = int32([frame[5], frame[6], frame[7], frame[8]]);
+        let processedBytes = 9;
+        let data;
+        
+        while ((data = scope.socket.read(totalSize)) !== null) {
+            console.log('reading data')
+            frame.push.apply(frame, data);
+            processedBytes += totalSize;
         }
+        
+        console.log('got fresh payload: ', frame.length, 'expecting total bytes:', totalSize)
+
+        // TODO: Do we need to split frames?
+        routeDBResponse(frame);
     }
 
     function routeDBResponse(payload) {
         const decoded = streamDecode([...payload], scope);
+        console.log(decoded, toUTF8StringRange(payload, payload.length - decoded.metadata.bodyLength, decoded.metadata.bodyLength))
 
         if (decoded.metadata.opcode === 'result') {
             //emitter.emit('data', { header: decoded.header, body: parseResult(decoded.body, scope) });
             emitter.emit('data', decoded);
         }
         else if (authOperations.includes(decoded.metadata.opcode)) {
-            scope.authenticator.step(decoded);
+            scope.authenticator.step(decoded, toUTF8StringRange(payload, payload.length - decoded.metadata.bodyLength, decoded.metadata.bodyLength));
         }
-        else if (decoded.metadata.opcode === 'ready') {
+        else if (decoded.metadata.opcode === 'ready' || decoded.metadata.opcode === 'authSuccess') {
             scope.status = 'ready';
             scope.requestQueue.unlock();
+        }
+        else if (decoded.metadata.opcode === 'error') {
+            console.log('Error:', decoded, toUTF8StringRange(payload, payload.length - decoded.metadata.bodyLength, decoded.metadata.bodyLength))
         }
         else {
             handleDBEvent(decoded);
@@ -89,10 +102,11 @@ export function connection(scope, emitter) {
         else scope.socket = connectSocket(host);
 
         scope.socket.on('connect', handleConnection);
-        scope.socket.on('data', handleDBResponse);
+        scope.socket.on('readable', handleDBResponse);
         scope.socket.on('error', handleError);
         scope.socket.on('close', handleClose);
-        scope.authenticator = sequence(scope, sendDBRequest).begin();
+        scope.authenticator = sequence(scope, sendDBRequest);
+        scope.authenticator.begin();
 
         return instance;
     }

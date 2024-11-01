@@ -2,14 +2,13 @@
  * Authenticator
  */
 
-import {request, stringMap } from '../commons/encoder';
+import {request, stringMap, string, uint8, longString } from '../commons/encoder';
 
 
 export const authOperations = [
     'authenticate',
     'credentials',
     'auth_challenge',
-    'authSuccess',
 ];
 
 /*- STARTUP
@@ -35,16 +34,23 @@ export function sequence(scope, method) {
         method(request(payload));
     }
 
-    function step(data) {
-        console.log('auth', data);
+    function step(data, alg) {
+        console.log(`auth "${alg}"`);
 
-        const payload = {
+        if (alg.includes('PasswordAuthenticator')) {
+            console.log('returning for alg sasl')
+            return method(request({
+                opcode: 'authResponse',
+                streamId: -1,
+                body: [...longString(alg),0,...string(uint8, scope.options.credentials.username),0,...string(uint8, scope.options.credentials.password)]
+            }));
+        }
+
+        return method(request({
             opcode: 'authResponse',
             streamId: -1,
-            body: ''
-        };
-
-        method(request(payload));
+            body: [0,0,0,0]
+        }));
     }
 
     return { begin, step };

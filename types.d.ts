@@ -1,4 +1,4 @@
-interface ClientConfig {
+export interface ClientConfig {
     hosts: string[]
     keyspace: string
     compression?: {
