@@ -4,8 +4,17 @@ import {unparse} from './uuid'
 
 const protocols = {4: v4, 5: v4}
 
+export function verifyPayload(stream, options) {
+    const opcopde = protocols[options.protocolVersion || 4].opcodesIn[stream[4]];
+    return opcopde;
+}
+
 export function streamDecode(stream: Array<number>, options) {
     let cursor = 0;
+
+    function printNBytes(n) {
+        console.log(`Next ${n} bytes:`, stream.slice(cursor, cursor+n));
+    }
 
     function uint8() {
         cursor++;
@@ -106,8 +115,6 @@ export function streamDecode(stream: Array<number>, options) {
 
     const rows = [];
 
-    console.log('Opcode:', metadata.opcode)
-
     if (metadata.opcode === 'result') {
         // Response meta ()
         metadata.type = protocols[options.protocolVersion || 4].queriesIn.resultKind[int32()];
@@ -132,29 +139,33 @@ export function streamDecode(stream: Array<number>, options) {
                 table: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.table : shortBytesString(),
                 columnName: shortBytesString(),
                 columnType: protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                columnFormat: null,
             };
+
+            //TODO: Some funky types have larger sizes than 2 bytes, do something cleaner
+            if (column.columnType === 'set') {
+                column.columnFormat = protocols[options.protocolVersion || 4].dataIn.types[int16()];
+            }
+            if (column.columnType === 'map') {
+                column.columnFormat = [
+                    protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                    protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                ];
+            }
             metadata.columns.push(column);
         }
 
-        // Somehow... 2 bytes
-        int16() // TODO figure out why it's offset on the scylla cloud
-
-        console.log(stream.slice(cursor))
-
         metadata.rowsCount = int32();
 
-        console.log(metadata)
-
-        while (rows.length < metadata.rowsCount && cursor < metadata.bodyLength) {
+        while (rows.length < metadata.rowsCount && cursor < stream.length) {
             const row = {};
             for (let i = 0; i < metadata.columns.length; i++) {
                 const chunkSize = int32();
-                row[metadata.columns[i].columnName] = parseCell(metadata.columns[i].columnType, chunkSize);
+                if (chunkSize === -1) row[metadata.columns[i].columnName] = null;
+                else row[metadata.columns[i].columnName] = parseCell(metadata.columns[i].columnType, chunkSize);
             }
             rows.push(row);
         }
-
-        console.log('rows.length', rows.length, 'cursor', cursor , '/', stream.length)
     }
 
     return {

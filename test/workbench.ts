@@ -4,18 +4,6 @@ import {Client} from '../types';
 import * as cassandra from 'cassandra-driver'
 const distance = cassandra.types.distance;
 
-/*const db: Client = scylla.createClient({
-    hosts: [''0.0.0.0''],
-    keyspace: 'test'
-});*/
-
-
-//db.query("CREATE KEYSPACE test WITH replication = {'class':'SimpleStrategy', 'replication_factor': 1};");
-//db.query("CREATE TABLE test.users ( id text PRIMARY KEY, first_name text, last_name text, age int); ").then((result) => console.log('result', result));
-//db.query('INSERT INTO test.users (id, first_name, last_name, age) VALUES (\'' + randomUUID() + '\', \'tom\', \'sawyer\', 99)').then((result) => console.log('result', result));
-
-//db.query('SELECT * from test.users').then((result) => console.log('result', result));
-
 interface User {
   id: string
   age: number
@@ -30,7 +18,6 @@ const loadTest = async (repeatCount: number, libId) => {
 
   if (libId === 1) {
     db = scylla.createClient({
-        //hosts: ['15.156.171.38', '3.97.26.87', '3.97.92.75'],
         hosts: ['0.0.0.0'],
         keyspace: 'test',
         connections: {
@@ -58,11 +45,18 @@ const loadTest = async (repeatCount: number, libId) => {
   console.log(`Load testing ${libId} with ${repeatCount} queries...`);
   const start = Date.now();
   for (let i = 0; i < repeatCount; i++) {
-    if (libId === 1) await db.query<User>('SELECT * FROM system.peers').then((res) => console.log(res.rows));
-    if (libId === 2) await client.execute('SELECT * from test.users');
+    if (libId === 1) await db.query<User>('SELECT * FROM system.peers').then((res) => console.log('RES',res.rows.map(r => r.peer.toString())));
+    if (libId === 2) {
+      await client.execute('SELECT * FROM system.peers').then((res) => console.log('RES',res.rows.map(r => r.peer.toString())));
+      await client.execute('SELECT * FROM system.local').then((res) => console.log('RES',res.rows));
+    }
   }
   console.log(`Load test took ${Date.now() - start}ms for ${repeatCount} queries!`);
   console.log('Heap difference:', ((process.memoryUsage().rss - startHeap) / 1024).toFixed(2))
 };
 
-loadTest(1, 1).then(() => process.exit(0));
+loadTest(1, 1).then(() => {
+  /*setTimeout(() => {
+    process.exit(0);
+  }, 10000);*/
+});

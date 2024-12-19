@@ -7,7 +7,6 @@ import {host} from './host';
 import {EventEmitter} from 'node:events';
 
 export function client(scope) {
-    console.log(scope)
     if (!scope.options.hosts) throw new Error('No hosts provided');
     if (!Array.isArray(scope.options.hosts)) scope.options.hosts = [scope.options.hosts];
 
@@ -24,7 +23,6 @@ export function client(scope) {
     }
 
     function selectHost() {
-        console.log(hostList)
         const hostname = hostList[roundRobinIndex];
         roundRobinIndex++;
         
@@ -82,7 +80,7 @@ export function client(scope) {
     }
 
     function destroy() {
-
+       return hostList.map(h => h.close());
     }
 
     function init() {

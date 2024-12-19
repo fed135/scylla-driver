@@ -1,3 +1,0 @@
-function detectTokens(query, clusterConfiguration) {
-    
-}

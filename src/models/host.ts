@@ -4,15 +4,25 @@
 
 import {createConnection} from './connection';
 import { roundRobin } from '../commons/loadBalancing';
+import {routines as Routines} from '../commons/ecs';
+import {nodeInfo} from '../routines/nodeInfo';
+
+const MAX_STREAM_ID = (0xffff >> 1);
 
 export function host(scope, hostname) {
-    const streams = Array.from(Array(0xffff >> 1)).fill(null);
+    const streams = Array.from(Array(MAX_STREAM_ID)).fill(null);
     const streamsQueue = [];
     const connections = [spawn()];
     const loadBalancer = roundRobin(connections, scope.options, spawn);
+    const hostInfo = {
+        host: hostname,
+        port: scope.options.port,
+        tokens: [],
+    };
+    let routines;
 
     function getStream() {
-        for (let i = 0; i < 0xffff >> 1; i++) {
+        for (let i = 0; i < MAX_STREAM_ID; i++) {
             if (streams[i] === null) {
                 streams[i] = true;
                 return i + 1;
@@ -26,7 +36,6 @@ export function host(scope, hostname) {
             host: hostname,
             port: scope.options.port,
             options: scope.options,
-            cache: scope.localCache,
         });
         worker.on('data', handleResponse);
         worker.on('error', handleError);
@@ -77,5 +86,14 @@ export function host(scope, hostname) {
         return promise;
     }
 
-    return { execute };
+    function close() {
+
+    }
+
+    const instance = {execute, close, options: scope.options, hostInfo}
+    routines = Routines(instance, [
+        nodeInfo
+    ]);
+
+    return instance;
 }
