@@ -2,29 +2,27 @@
  * A single host config
  */
 
-/* Requires ------------------------------------------------------------------*/
+import {createConnection} from './connection';
+import { roundRobin } from '../commons/loadBalancing';
+import {routines as Routines} from '../commons/ecs';
+import {nodeInfo} from '../routines/nodeInfo';
 
-const connection = require('./connection');
+const MAX_STREAM_ID = (0xffff >> 1);
 
-/* Methods -------------------------------------------------------------------*/
-
-function host(scope, hostname) {
-    let roundRobinIndex = 0;
-    const streams = Array.from(Array(0xffff >> 1)).fill(null);
+export function host(scope, hostname) {
+    const streams = Array.from(Array(MAX_STREAM_ID)).fill(null);
     const streamsQueue = [];
-    const connections = Array.from(Array(scope.options.connections.local))
-        .map(spawn);
-
-    function getConnection() {
-        const connection = connections[roundRobinIndex];
-        roundRobinIndex++;
-        
-        if (roundRobinIndex >= connections.length) roundRobinIndex = 0;
-        return connection;
-    }
+    const connections = [spawn()];
+    const loadBalancer = roundRobin(connections, scope.options, spawn);
+    const hostInfo = {
+        host: hostname,
+        port: scope.options.port,
+        tokens: [],
+    };
+    let routines;
 
     function getStream() {
-        for (let i = 0; i < 0xffff >> 1; i++) {
+        for (let i = 0; i < MAX_STREAM_ID; i++) {
             if (streams[i] === null) {
                 streams[i] = true;
                 return i + 1;
@@ -34,11 +32,10 @@ function host(scope, hostname) {
     }
 
     function spawn() {
-        const worker = connection({
+        const worker = createConnection({
             host: hostname,
             port: scope.options.port,
             options: scope.options,
-            cache: scope.localCache,
         });
         worker.on('data', handleResponse);
         worker.on('error', handleError);
@@ -48,16 +45,16 @@ function host(scope, hostname) {
 
     function handleResponse(response) {
         let handle;
-        if (response.header.streamId < 1 && streamsQueue.length > 0) {
+        if (response.metadata.streamId < 1 && streamsQueue.length > 0) {
             handle = streamsQueue.shift();
         }
         else {
-            handle = streams[response.header.streamId - 1];
+            handle = streams[response.metadata.streamId - 1];
         }
 
         if (handle && handle.resolve) {
-            handle.resolve(response.body);
-            streams[response.header.streamId - 1] = null;
+            handle.resolve(response);
+            streams[response.metadata.streamId - 1] = null;
         }
     }
 
@@ -66,7 +63,7 @@ function host(scope, hostname) {
     }
 
     function execute(op, params) {
-        const id = params.streamId || getStream();
+        const id = params.streamId || getStream();
         let promise;
 
         if (id === 0) {
@@ -80,7 +77,7 @@ function host(scope, hostname) {
             });
         }
 
-        getConnection().send({
+        loadBalancer.getNextConnection().send({
             streamId: id,
             opcode: op,
             body: params,
@@ -89,9 +86,14 @@ function host(scope, hostname) {
         return promise;
     }
 
-    return { execute };
+    function close() {
+
+    }
+
+    const instance = {execute, close, options: scope.options, hostInfo}
+    routines = Routines(instance, [
+        nodeInfo
+    ]);
+
+    return instance;
 }
-
-/* Exports -------------------------------------------------------------------*/
-
-module.exports = host;

@@ -23,3 +23,5 @@ src/legacy
 *.spec
 package-lock.json
 yarn.lock
+.clinic
+bin
