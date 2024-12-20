@@ -12,7 +12,9 @@
     "cassandra"
   ],
   "license": "Apache-2.0",
-  "dependencies": {},
+  "dependencies": {
+    "murmurhash": "^2.0.0"
+  },
   "devDependencies": {
     "@types/node": "^22.10.0",
     "@typescript-eslint/eslint-plugin": "^7.9.0",

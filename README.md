@@ -116,6 +116,7 @@ npm run test
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Benchmark comparisons with Datastax driver
+- [ ] Import Cassandra custom Murmur3 algo (Which scylla also uses)
 
 ## Features from the Datastax driver that will not be supported
 
@@ -139,6 +140,8 @@ In order to keep the driver performant and reduce complexity a few choices were 
   - Scylla generally has fewer and shorter gc cycles
 - Query retrying
   - Must be handled in app design
+- Legacy support
+  - Only the 2 latest Binary protocols will be supported (4,5)
 
 ## Contribute
 

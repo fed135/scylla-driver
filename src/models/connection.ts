@@ -70,7 +70,7 @@ export function connection(options, emitter) {
             requestQueue.unlock();
         }
         else if (decodedHeader.metadata.opcode === 'error') {
-            console.log('Error:', decodedHeader, toUTF8StringRange(payload, payload.length - decodedHeader.metadata.bodyLength, decodedHeader.metadata.bodyLength))
+            console.log('Error:', decodedHeader);
         }
         else {
             handleDBEvent(decodedHeader);
