@@ -2,6 +2,7 @@
  * Client methods
  */
 
+import { queryPlan } from '../commons/queryPlan';
 import defaults from '../defaults';
 import {host} from './host';
 import {EventEmitter} from 'node:events';
@@ -12,6 +13,7 @@ export function client(scope) {
 
     const hostList = scope.options.hosts.map(host.bind(null, scope));
     let roundRobinIndex = 0;
+    const queryPlanner = queryPlan(hostList, scope.options);
     const eventTarget = new EventEmitter();
 
     function addHost() {
@@ -35,42 +37,52 @@ export function client(scope) {
         // return JSON.parse(JSON.stringify(list));
     }
 
+    // TODO: Prepared queries exist at the node level... maybe clean this section
     function query(statement, vars, options) {
-        if (options === undefined) {
+        if (options === undefined && !Array.isArray(vars)) {
             options = vars || {};
             vars = [];
         }
+        if (!Array.isArray(vars)) vars = [vars];
 
         const finalQueryOptions = Object.assign({}, scope.options.queryOptions, options);
 
-        if (finalQueryOptions.prepare === true) {
-            if (!(statement in scope.localCache.localPreparedStatements)) {
-                return prepare(statement).then(preparedId => {
-                    scope.localCache.localPreparedStatements[statement] = preparedId;
+        queryPlanner.parse(statement, vars, finalQueryOptions);
 
-                    return execute(statement, vars, finalQueryOptions);
+        const selectedHost = selectHost(); // TODO: pull from query planner
+
+        if (finalQueryOptions.prepare === true || (statement.indexOf('?') > -1 && vars.length > 0)) {
+            if (!(statement in scope.localCache.localPreparedStatements)) {
+                return _prepare(selectedHost, statement).then(result => {
+                    scope.localCache.localPreparedStatements[statement] = {
+                        id: result.metadata.preparedId,
+                        resultId: result.metadata.resultMetadataId,
+                    };
+
+                    return _execute(selectedHost, statement, vars, finalQueryOptions);
                 });
             }
-            return execute(statement, vars, finalQueryOptions);
+            return _execute(selectedHost, statement, vars, finalQueryOptions);
         }
 
-        return selectHost().execute('query', {
+        return selectedHost.execute('query', {
             statement,
             vars,
             options: finalQueryOptions,
         });
     }
 
-    function execute(statement, vars, options) {
-        return selectHost().execute('execute', {
-            preparedId: scope.localCache.localPreparedStatements[statement],
+    function _execute(host, statement, vars, options) {
+        return host.execute('execute', {
+            preparedId: scope.localCache.localPreparedStatements[statement].id,
+            resultMetadataId: scope.localCache.localPreparedStatements[statement].resultId,
             vars,
             options,
         });
     }
 
-    function prepare(statement) {
-        return selectHost().execute('prepare', {
+    function _prepare(host, statement) {
+        return host.execute('prepare', {
             statement
         });
     }
@@ -89,7 +101,7 @@ export function client(scope) {
     }
 
     // Exposes internals for unit testing
-    return {...eventTarget, query, stream, destroy, init, execute, prepare };
+    return {...eventTarget, query, stream, destroy, init, _execute, _prepare };
 }
 
 export function createClient(options) {

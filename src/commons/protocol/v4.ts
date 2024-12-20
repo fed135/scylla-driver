@@ -142,3 +142,13 @@ export const eventsOut = {
 };
 
 export const eventsIn = flipMap(eventsOut);
+
+export const queryFlagsOut = {
+    values:                     0,
+    skipMetadata:               1,
+    pageSize:                   2,
+    withPagingState:            3,
+    serialConsistency:          4,
+    defaultTimestamp:           5,
+    withNames:                  6,
+}

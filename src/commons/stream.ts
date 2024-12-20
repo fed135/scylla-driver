@@ -81,7 +81,7 @@ export function streamDecode(stream: Array<number>, options) {
         }, {});
     }
 
-    function parseCell(type, chunkSize) {
+    function parseCell(type, chunkSize, format?) {
 
         switch(type) {
             case 'varchar': 
@@ -98,6 +98,20 @@ export function streamDecode(stream: Array<number>, options) {
             case 'uuid': 
                 cursor += chunkSize;
                 return unparse(stream, cursor - chunkSize);
+            case 'set':
+                const nItems = int32();
+                const list = [];
+                const endOfSet = cursor + chunkSize;
+
+                for (let i = 0; i < nItems; i++) {
+                    if (cursor > endOfSet) {
+                        cursor = endOfSet;
+                        return list;
+                    }
+                    list.push(parseCell(format, int32()));
+                }
+                
+                return list;
             default: 
                 cursor += chunkSize;
                 return `${type}`
@@ -118,53 +132,70 @@ export function streamDecode(stream: Array<number>, options) {
     if (metadata.opcode === 'result') {
         // Response meta ()
         metadata.type = protocols[options.protocolVersion || 4].queriesIn.resultKind[int32()];
-        metadata.queryFlags = unmask(int32(), protocols[options.protocolVersion || 4].responseFlagsOut) as { globalTableSpecs: boolean };
-        metadata.columnsCount = int32();
-        metadata.rowsCount = null;
-        metadata.newMetadataId = null;
-        metadata.globalTableSpecs = {
-            keyspace: '',
-            table: '',
-        };
-        metadata.columns = [];
 
-        if (metadata.queryFlags.globalTableSpecs) {
-            metadata.globalTableSpecs.keyspace = shortBytesString();
-            metadata.globalTableSpecs.table = shortBytesString();
-        }
-
-        while (metadata.columns.length < metadata.columnsCount && cursor < stream.length) {
-            const column = {
-                keyspace: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.keyspace : shortBytesString(),
-                table: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.table : shortBytesString(),
-                columnName: shortBytesString(),
-                columnType: protocols[options.protocolVersion || 4].dataIn.types[int16()],
-                columnFormat: null,
+        if (metadata.type === 'rows') {
+            metadata.queryFlags = unmask(int32(), protocols[options.protocolVersion || 4].responseFlagsOut) as { globalTableSpecs: boolean };
+            metadata.columnsCount = int32();
+            metadata.rowsCount = null;
+            metadata.newMetadataId = null;
+            metadata.globalTableSpecs = {
+                keyspace: '',
+                table: '',
             };
+            metadata.columns = [];
 
-            //TODO: Some funky types have larger sizes than 2 bytes, do something cleaner
-            if (column.columnType === 'set') {
-                column.columnFormat = protocols[options.protocolVersion || 4].dataIn.types[int16()];
+            if (metadata.queryFlags.globalTableSpecs) {
+                metadata.globalTableSpecs.keyspace = shortBytesString();
+                metadata.globalTableSpecs.table = shortBytesString();
             }
-            if (column.columnType === 'map') {
-                column.columnFormat = [
-                    protocols[options.protocolVersion || 4].dataIn.types[int16()],
-                    protocols[options.protocolVersion || 4].dataIn.types[int16()],
-                ];
+
+            while (metadata.columns.length < metadata.columnsCount && cursor < stream.length) {
+                const column = {
+                    keyspace: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.keyspace : shortBytesString(),
+                    table: (metadata.queryFlags.globalTableSpecs) ? metadata.globalTableSpecs.table : shortBytesString(),
+                    columnName: shortBytesString(),
+                    columnType: protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                    columnFormat: null,
+                };
+
+                //TODO: Some funky types have larger sizes than 2 bytes, do something cleaner
+                if (column.columnType === 'set') {
+                    column.columnFormat = protocols[options.protocolVersion || 4].dataIn.types[int16()];
+                }
+                if (column.columnType === 'map') {
+                    column.columnFormat = [
+                        protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                        protocols[options.protocolVersion || 4].dataIn.types[int16()],
+                    ];
+                }
+                metadata.columns.push(column);
             }
-            metadata.columns.push(column);
+
+            metadata.rowsCount = int32();
+
+            while (rows.length < metadata.rowsCount && cursor < stream.length) {
+                const row = {};
+                for (let i = 0; i < metadata.columns.length; i++) {
+                    const chunkSize = int32();
+                    if (chunkSize === -1) row[metadata.columns[i].columnName] = null;
+                    else row[metadata.columns[i].columnName] = parseCell(metadata.columns[i].columnType, chunkSize, metadata.columns[i].columnFormat);
+                }
+                rows.push(row);
+            }
         }
-
-        metadata.rowsCount = int32();
-
-        while (rows.length < metadata.rowsCount && cursor < stream.length) {
-            const row = {};
-            for (let i = 0; i < metadata.columns.length; i++) {
-                const chunkSize = int32();
-                if (chunkSize === -1) row[metadata.columns[i].columnName] = null;
-                else row[metadata.columns[i].columnName] = parseCell(metadata.columns[i].columnType, chunkSize);
-            }
-            rows.push(row);
+        if (metadata.type === 'prepared') {
+            const idSize = int16();
+            metadata.preparedId = stream.slice(cursor, cursor + idSize);
+            cursor += idSize;
+            const metadataIdSize = int16();
+            metadata.resultMetadataId = stream.slice(cursor, cursor + metadataIdSize);
+        }
+    }
+    else if (metadata.opcode === 'error') {
+        return {
+            metadata,
+            errorCode: int32(),
+            errorMessage: shortBytesString(),
         }
     }
 
