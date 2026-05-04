@@ -1,7 +1,3 @@
-/**
- * Utility methods for data structures
- */
-
 export function flipMap(obj) {
     const ret = {};
     for (const item in obj) {
@@ -80,12 +76,17 @@ export function toUTF8StringRange(stream, cursor, count) {
     return str;
   }
 
-  export function bufferToArray(buffer){
-    if (buffer.length > 0) {
-        const data = new Array(buffer.length);
-        for (let i = 0; i < buffer.length; i=i+1)
-            data[i] = buffer[i];
-        return data;
-    }
-    return [];
+  export function deferred<T = void>() {
+	let resolve: (value?: T | PromiseLike<T>) => void;
+	let reject: (reason?: any) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return { promise, resolve, reject };
 }
+
+export type Deferred<T = void> = { promise: Promise<T>, resolve: Function, reject: Function }
+
+export const wrap = (channel: Function, additionalChannel: Function) => (info:any) => { additionalChannel(info); channel(info); };

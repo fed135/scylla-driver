@@ -1,6 +1,6 @@
-import * as v4 from './protocol/v4';
-import { toUTF8StringRange } from './dataStructures';
-import {unparse} from './uuid'
+import * as v4 from '../protocol/v4.ts';
+import { toUTF8StringRange } from './utils.ts';
+import {unparse} from './uuid.ts'
 
 const protocols = {4: v4, 5: v4}
 

@@ -1,8 +1,4 @@
-/**
- * Protocol flag mapping 
- */
-
-import  { flipMap, flipNested }  from '../dataStructures';
+import  { flipMap, flipNested }  from '../helpers/utils.ts';
 
 export const meta = {
     version:                    0x04,

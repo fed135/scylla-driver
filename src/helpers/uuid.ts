@@ -1,4 +1,4 @@
-import { randomBytes } from "crypto";
+import { randomBytes } from "node:crypto";
 
 // https://github.com/defunctzombie/node-uuid/blob/master/uuid.js
 

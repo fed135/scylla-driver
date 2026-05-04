@@ -1,9 +1,5 @@
-/**
- * Logging util
- */
-
-function print(level) {
-    return function consolePrint(msg) {
+function print(level: string) {
+    return function consolePrint(msg: string) {
         const enabled = ((typeof process === 'object' && process.env.NODE_DEBUG) || '').indexOf('scylla') > -1;
         if (enabled === true) console.log(`[${level}] SCYLLA(pid:${process.pid}) ${msg}`); // eslint-disable-line no-console
     }

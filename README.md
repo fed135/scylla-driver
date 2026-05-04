@@ -94,12 +94,12 @@ npm run test
 ## TODO
 
 - [x] Zero-copy stream reading
-- [ ] Refactor (figure best paradigm to reduce instantiation and complexity while preventing user access to internals)
-- [ ] Query options
+- [ ] Refactor (figure best paradigm to reduce instantiation and complexity while preventing end-user access to internals)
+- [ ] Query options (Consistency level, etc)
 - [ ] Query stats / timeouts
 - [ ] Cassandra types marshalling
 - [ ] Prepared statements
-- [ ] Streaming queries
+- [ ] Streaming queries/ Async iterators design
 - [ ] Query buffering and QueryContext (attempt to reuse same connection to send multiple frames at once)
 - [ ] Transactions (Batch queries)
 - [ ] Cluster topology
@@ -109,6 +109,7 @@ npm run test
 - [ ] Dynamic types
 - [ ] Geospatial points
 - [ ] Authentication flows
+- [ ] Symbol.dispose, Symbol.asyncDispose
 - [ ] TLS/SSL
 - [ ] Binary API compatibility
 - [ ] Query warnings (server) and static statement validation (client)
@@ -118,7 +119,7 @@ npm run test
 - [ ] Benchmark comparisons with Datastax driver
 - [ ] Import Cassandra custom Murmur3 algo (Which scylla also uses)
 
-## Features from the Datastax driver that will not be supported
+## Features from the Datastax driver that will **not** be supported
 
 In order to keep the driver performant and reduce complexity a few choices were made to strip or replace some of the features present in the Datastax Cassandra driver.
 
@@ -133,8 +134,6 @@ In order to keep the driver performant and reduce complexity a few choices were 
 - Mappers
   - Must be handled in app design
   - The library provides deep Typescript definitions and helpers to facilitate development 
-- Callbacks and async iterators
-  - The library will only support streams and promises
 - Speculative query executions
   - This introduces a lot of complexity and unecessary load (queries cannot be aborted)
   - Scylla generally has fewer and shorter gc cycles
@@ -149,4 +148,4 @@ I am always looking for help. Reach out to get involved!
 
 ## License 
 
-[Apache 2.0](LICENSE) (c) 2017-2024 Frederic Charette
+[Apache 2.0](LICENSE) (c) 2017-2026 Frederic Charette

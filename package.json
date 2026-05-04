@@ -2,6 +2,7 @@
   "name": "scylladb",
   "version": "1.0.0",
   "description": "ScyllaDB Node.js Driver",
+  "type": "module",
   "keywords": [
     "scylla",
     "cassandra",
@@ -16,13 +17,15 @@
     "murmurhash": "^2.0.0"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "@typescript-eslint/eslint-plugin": "^7.9.0",
-    "@typescript-eslint/parser": "^7.9.0",
-    "cassandra-driver": "^4.6.0",
-    "eslint": "^8.56.0",
-    "ts-node": "^10.9.2",
-    "typescript": "^5.4.0"
+    "@types/node": "^25.6.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
+    "cassandra-driver": "^4.8.0",
+    "eslint": "^10.2.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.58.0"
+  },
+  "engines": {
+    "node": ">=22"
   },
   "main": "bin/index",
   "repository": {
@@ -42,24 +45,12 @@
     "types.d.ts"
   ],
   "scripts": {
-    "test": "npm run test:unit && npm run build && npm run test:integration",
-    "test:unit": "node --experimental-strip-types --test ./src/**/*.test.ts",
-    "test:integration": "node --experimental-strip-types --test ./test/**/*.test.ts",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test ./src/**/*.test.ts",
+    "test:integration": "node --test ./test/**/*.test.ts",
     "lint": "eslint ./**/*.ts",
     "lint:fix": "eslint ./**/*.ts --fix",
-    "build": "./node_modules/typescript/bin/tsc --outDir ./bin",
-    "dev": "node -r ./node_modules/ts-node/register/transpile-only ./test/workbench.ts",
-    "exp": "node -r ./node_modules/ts-node/register/transpile-only ./src-new/index.ts"
-  },
-  "jest": {
-    "preset": "ts-jest",
-    "testEnvironment": "node",
-    "transform": {
-      "^.+\\.tsx?$": [
-      "ts-jest", {
-        "diagnostics": false,
-        "isolatedModules": true
-      }]
-    }
+    "build": "tsc --outDir ./bin ./src/index.ts",
+    "dev": "node ./test/workbench.ts"
   }
 }

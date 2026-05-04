@@ -1,10 +1,6 @@
-/**
- * Encoder
- */
-
 // TODO: align vocabulary with docs + add signatures in comment
 
-import * as v4 from './protocol/v4';
+import * as v4 from '../protocol/v4.ts';
 
 const protocols = {4: v4, 5: v4}
 
@@ -71,11 +67,15 @@ function content(payload, options) {
 }
 
 export function stringMap(obj) {
-    const ret = uint16(Object.keys(obj));
-    for (const item in obj) {
-        const tmpStr = string(uint8, `${item}=${obj[item]}`);
-        ret.push.apply(ret, uint16(tmpStr.length));
-        ret.push.apply(ret, tmpStr);
+    const entries = Object.entries(obj).filter(([, v]) => v !== undefined && v !== null);
+    const ret = uint16(entries.length);
+    for (const [key, val] of entries) {
+        const keyBytes = string(uint8, key);
+        ret.push.apply(ret, uint16(keyBytes.length));
+        ret.push.apply(ret, keyBytes);
+        const valBytes = string(uint8, `${val}`);
+        ret.push.apply(ret, uint16(valBytes.length));
+        ret.push.apply(ret, valBytes);
     }
     return ret;
 }
@@ -107,7 +107,7 @@ export function execute(body, options) {
     }
 
     return [
-        ...shortString(body.preparedId),
+        ...shortBytes(body.preparedId),
         //...shortString(body.resultMetadataId),
         ...uint16(protocols[options.protocolVersion || 4].queriesOut.consistencies[body.options.consistency]),
         ...flags,
@@ -123,6 +123,10 @@ export function longString(str) {
 
 export function shortString(str) {
     const bytes = [...Buffer.from(str)];
+    return [...uint16(bytes.length), ...bytes];
+}
+
+export function shortBytes(bytes) {
     return [...uint16(bytes.length), ...bytes];
 }
 

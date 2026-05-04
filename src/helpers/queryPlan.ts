@@ -1,4 +1,4 @@
-import {v3} from 'murmurhash';
+import * as mmh from 'murmurhash';
 
 export function queryPlan(hosts, connectionOptions) {
     function parse(statement, vars, queryOptions) {
@@ -6,7 +6,7 @@ export function queryPlan(hosts, connectionOptions) {
         if (vars.length && hosts.some(h => h.hostInfo.tokens.length > 0)) {
             // See: https://stackoverflow.com/questions/52564139/what-is-the-algorithm-behind-cassandras-token-function
             // I don't think this is right... definitly not
-            const hash = v3(vars[0]);
+            const hash = mmh.v3(vars[0]);
             let tests = 0;
 
             console.log('id hash', hash, hosts[0].hostInfo.tokens[0])

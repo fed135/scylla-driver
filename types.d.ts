@@ -1,89 +1,70 @@
-export interface ClientConfig {
-    hosts: string[]
-    keyspace: string
-    compression?: {
-        uncompressSync?: Function
-        compressSync?: Function
-    }
+export type ScyllaValue = string | number | boolean | null | Buffer | ScyllaValue[];
+
+export interface ColumnInfo {
+    keyspace: string;
+    table: string;
+    columnName: string;
+    columnType: 'custom' | 'ascii' | 'bigint' | 'blob' | 'boolean' | 'counter' | 'decimal' | 'double' | 'float' | 'int' | 'text' | 'timestamp' | 'uuid' | 'varchar' | 'varint' | 'timeuuid' | 'inet' | 'date' | 'time' | 'smallint' | 'tinyint' | 'list' | 'map' | 'set' | 'udt' | 'tuple';
 }
 
-interface ColumnDefinition {
-    keyspace: string
-    table: string
-    columnName: string
-    columnType: 'custom' | 'ascii' | 'bigint' | 'blob' | 'boolean' | 'counter' | 'decimal' | 'double' | 'float' | 'int' | 'text' | 'timestamp' | 'uuid' | 'varchar' | 'varint' | 'timeuuid' | 'inet' | 'date' | 'time' | 'smallint' | 'tinyint' | 'list' | 'map' | 'set' | 'udt' | 'tuple'
-}
-
-interface QueryResponse<T> {
+export interface Result<T = Record<string, ScyllaValue>> {
+    rows: T[];
+    rowLength: number;
+    columns: ColumnInfo[];
+    pageState: string | null;
+    warnings: string[];
     metadata: {
-        version: number
-        flags: number
-        streamId: number
-        opcode: 'error' | 'ready' | 'result' | 'authenticate' | 'credentials' | 'options' | 'supported' | 'query' | 'prepare' | 'execute' | 'register' | 'event' | 'batch' | 'authChallenge' | 'authResponse' | 'authSuccess'
-        bodyLength: number
-        type: 'voidResult' | 'rows' | 'setKeyspace' | 'prepared' | 'schemaChange'
-        queryFlags: {
-            globalTableSpecs: boolean
-            hasMorePages: boolean
-            noMetadata: boolean
-            metadataChanged: boolean
-            continuousPaging: boolean
-            lastContinuousPage: boolean
-          }
-          columnsCount: number
-          rowsCount: number
-          newMetadataId: string
-          globalTableSpecs: {
-            keyspace?: string
-            table?: string
-        }
-        columns: ColumnDefinition[]
-    }
-    rows: T[]
+        version: number;
+        streamId: number;
+        opcode: string;
+        type: 'voidResult' | 'rows' | 'setKeyspace' | 'prepared' | 'schemaChange';
+        columnsCount: number;
+        rowsCount: number;
+    };
 }
 
-interface QueryOptions {
-
+export interface QueryOptions {
+    consistency?: 'any' | 'one' | 'two' | 'three' | 'quorum' | 'all' | 'localQuorum' | 'eachQuorum' | 'serial' | 'localSerial' | 'localOne';
+    timeout?: number;
+    pageSize?: number;
+    pageState?: string;
+    prepare?: boolean;
+    signal?: AbortSignal;
 }
 
-interface QueryStream<T> {
-    pause(): void
-    resume(): void
+export interface ClientConfig {
+    hosts: string | string[];
+    keyspace?: string;
+    credentials?: { username: string; password: string };
+    tls?: boolean;
+    port?: number;
+    connections?: { local?: number; remote?: number };
+    queryOptions?: Partial<QueryOptions>;
+    queryTimeout?: number;
+}
 
-    on<k extends keyof ClientStreamEventMap<T>>(event: k, listener: ClientStreamEventMap<T>[k]): this;
-    once<k extends keyof ClientStreamEventMap<T>>(event: k, listener: ClientStreamEventMap<T>[k] | Function): this;
-    removeListener<k extends keyof ClientStreamEventMap<T>>(event: k, listener: ClientStreamEventMap<T>[k] | Function): this;
-    off<k extends keyof ClientStreamEventMap<T>>(event: k, listener: ClientStreamEventMap<T>[k] | Function): this;
+export interface BatchContext {
+    query<T = Record<string, ScyllaValue>>(statement: string, vars?: ScyllaValue[], options?: QueryOptions): Promise<Result<T>>;
 }
 
 export interface Client {
-    query<T>(statement: string, options?: QueryOptions): Promise<QueryResponse<T>>
-    query<T>(statement: string, vars: Array<string|number|Date|null>, options?: QueryOptions): Promise<QueryResponse<T>>
-
-    stream<T>(statement: string, options?: QueryOptions): Promise<QueryStream<T>>
-    stream<T>(statement: string, vars: Array<string|number|Date|null>, options?: QueryOptions): Promise<QueryStream<T>>
-
-    destroy(): void
-
-    on<k extends keyof ClientEventMap>(event: k, listener: ClientEventMap[k]): this;
-    once<k extends keyof ClientEventMap>(event: k, listener: ClientEventMap[k] | Function): this;
-    removeListener<k extends keyof ClientEventMap>(event: k, listener: ClientEventMap[k] | Function): this;
-    off<k extends keyof ClientEventMap>(event: k, listener: ClientEventMap[k] | Function): this;
-}
-
-interface ClientEventMap {
-    'error': (error: Error) => void
-}
-
-interface ClientStreamEventMap<T> {
-    'row': (row: T) => void
-    'end': () => void
-    'error': (error: Error) => void
+    query<T = Record<string, ScyllaValue>>(statement: string, vars?: ScyllaValue[], options?: QueryOptions): Promise<Result<T>>;
+    stream<T = Record<string, ScyllaValue>>(statement: string, vars?: ScyllaValue[], options?: QueryOptions): AsyncIterable<T>;
+    batch(fn: (tx: BatchContext) => Promise<void>): Promise<void>;
+    prepare(statement: string): Promise<void>;
+    ready: Promise<void>;
+    closed: Promise<void>;
+    close(): Promise<void>;
 }
 
 declare module 'scylladb' {
-    /**
-     * Starts a client instance and attempts to connect to a cluster
-     */
-    export const createClient: (config: ClientConfig) => Client;
+    export function connect(config: ClientConfig): Client;
+
+    export class ScyllaError {
+        message: string
+        name: string
+        cause?: Error
+
+        constructor(message: string, name?: string, cause?: Error)
+    }
 }

@@ -24,6 +24,8 @@ export function nodeInfo(scope) {
             scope.hostInfo.rack = result.rows[0].rack;
             scope.hostInfo.tokens = result.rows[0].tokens;
             scope.hostInfo.schema_version = result.rows[0].schema_version;
+        }).catch((e) => {
+            console.warn('Could not perform nodeInfo query on cluster. Cluster may be unstable: ', e);
         });
     }
 
