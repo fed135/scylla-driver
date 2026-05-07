@@ -6,6 +6,7 @@ import Writer from './writer.ts';
 import AuthenticationHandler from './helpers/authentication.ts';
 import ScyllaError from './helpers/errors.ts';
 import type { Deferred } from './helpers/utils.ts';
+import type {QueryContext} from './writer.ts';
 
 export default class Connection {
   #connectionState: {
@@ -21,8 +22,8 @@ export default class Connection {
 
   #authHandler: AuthenticationHandler;
 
-  #streams: (Deferred | null)[];
-  #internalQueue: Deferred[];
+  #streams: (({ context: QueryContext } & Deferred) | null)[];
+  #internalQueue: ({ context: QueryContext } & Deferred)[];
 
   #reader: Reader;
   #writer: Writer;
@@ -30,6 +31,7 @@ export default class Connection {
   #errorChannel: Function;
 
   status: number;
+  ready: Promise<Connection>;
 
   constructor(host: string, port: number | undefined, options: Options, errorChannel: Function) {
     this.#host = host;
@@ -46,6 +48,7 @@ export default class Connection {
     this.#internalQueue = [];
 
     this.status = Connection.STATUS.init;
+    this.ready = this.#authHandler.hook().ready;
   }
 
   connect(): Connection {
@@ -63,20 +66,19 @@ export default class Connection {
     return this;
   }
 
-  async request(payload: { opcode: 'prepare' | 'execute' | 'query' | 'startup', body?: number[], statement?: string, vars?: any[], streamId?: number, options?: any, signal?: AbortSignal, preparedId?: string, resultMetadataId?: string }): Promise<any> {
-    if (payload.opcode !== 'startup') await this.#authHandler.hook().ready;
+  async request(payload: QueryContext): Promise<any> {
+    const streamId = payload.streamId ?? this.#getNextStream();
+    const handle = { context: payload, ...deferred() };
 
-    // TODO: Assign stream, send query, return handler
-    const streamId = payload.streamId || this.#getNextStream();
-
-    this.#writer.write({ ...payload, streamId }, streamId === -1, this.#options);
+    // Streams IDs start at 1 on Cassandra
+    this.#writer.write({ ...payload, streamId: streamId !== -1 ? streamId + 1 : -1 }, streamId !== -1, this.#options);
 
     if (streamId === -1) {
-      const handle = deferred();
       this.#internalQueue.push(handle);
       return handle.promise;
     }
-
+    
+    this.#streams[streamId] = handle;
     return this.#streams[streamId]?.promise;
   }
 
@@ -85,7 +87,7 @@ export default class Connection {
   }
 
   load() {
-    return this.#getNextStream(true) + this.#internalQueue.length;
+    return this.#getNextStream() + this.#internalQueue.length;
   }
 
   #handleConnection() {
@@ -125,15 +127,16 @@ export default class Connection {
       handle = this.#streams[response.metadata.streamId - 1];
     }
 
-    handle?.resolve?.(response);
-
-    this.#streams[response.metadata.streamId - 1] = null;
+    if (response.metadata.opcode === 'error') this.#errorChannel(ScyllaError.QueryError(response.errorMessage, response, handle?.context));
+    else {
+        handle?.resolve?.(response);
+        this.#streams[response.metadata.streamId - 1] = null;
+    }
   }
 
-  #getNextStream(readOnly: boolean = false) {
+  #getNextStream() {
     for (let i = 0; i < Connection.MAX_STREAM_ID; i++) {
       if (this.#streams[i] === null) {
-        if (!readOnly) this.#streams[i] = deferred();
         return i;
       }
     }

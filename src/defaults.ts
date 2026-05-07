@@ -5,10 +5,7 @@ type RecursivePartial<T> = {
 export type Options = {
   hosts: string[]
   port: number
-  connections: {
-    local: number
-    remote: number
-  }
+  poolSize: number
   queryOptions: {
     consistency: 'any' | 'one' | 'two' | 'three' | 'quorum' | 'all' | 'localQuorum' | 'eachQuorum' | 'serial' | 'localSerial' | 'localOne'
     limit: number
@@ -29,10 +26,7 @@ export type Options = {
 export default {
   hosts: [],
   port: 9042,
-  connections: {
-    local: 10,
-    remote: 0,
-  },
+  poolSize: 10,
   queryOptions: {
     consistency: 'localOne',
     limit: 1000,

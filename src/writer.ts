@@ -3,6 +3,18 @@ import { query, prepare, execute, stringMap, request as encodeRequest } from './
 import Queue from './helpers/queue.ts';
 import type { Options } from './defaults.ts';
 
+export type QueryContext = {
+    opcode: 'prepare' | 'execute' | 'query' | 'startup'
+    body?: number[]
+    statement?: string
+    vars?: any[]
+    streamId?: number
+    options?: any
+    signal?: AbortSignal
+    preparedId?: string
+    resultMetadataId?: string
+}
+
 export default class Writer {
   #getSocket: () => Socket | undefined;
   #queue: Queue;

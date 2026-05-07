@@ -35,9 +35,7 @@ const libs: { [lib in LIBS]: { setup: Function, teardown: Function, client: any,
     setup: async () => connect({
       hosts: ['0.0.0.0:9042', '0.0.0.0:9043', '0.0.0.0:9044'],
       keyspace: 'test',
-      connections: {
-        local: 1,
-      },
+      poolSize: 1,
     }),
     teardown: () => libs.scylla.client?.close?.(),
     client: null,

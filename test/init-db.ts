@@ -1,5 +1,4 @@
 import * as cassandra from 'cassandra-driver';
-import { randomUUID } from 'node:crypto';
 
 const db = new cassandra.Client({
   contactPoints: ['0.0.0.0:9042'],
@@ -12,7 +11,7 @@ db.execute('CREATE KEYSPACE test WITH replication = {\'class\':\'SimpleStrategy\
     return db.execute('CREATE TABLE test.users ( id text PRIMARY KEY, first_name text, last_name text, age int); ').then(() => console.log('Created table'));
   })
   .then(() => {
-    return db.execute('INSERT INTO test.users (id, first_name, last_name, age) VALUES (\'' + randomUUID() + '\', \'tom\', \'sawyer\', 99)').then(() => console.log('Inserted row'));
+    return db.execute('INSERT INTO test.users (id, first_name, last_name, age) VALUES (\'6ef444c7-0a81-4e92-959b-143459b6d766\', \'tom\', \'sawyer\', 99)').then(() => console.log('Inserted row'));
   })
   .then(() => {
     console.log('Database initialized!');

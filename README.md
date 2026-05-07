@@ -91,33 +91,34 @@ Help can be found in the [wiki](https://github.com/fed135/scylla-driver/wiki).
 npm run test
 ```
 
-## TODO
+## TODO (1.0)
 
 - [x] Zero-copy stream reading
-- [ ] Refactor (figure best paradigm to reduce instantiation and complexity while preventing end-user access to internals)
+- [x] Refactor (figure best paradigm to reduce instantiation and complexity while preventing end-user access to internals)
 - [ ] Query options (Consistency level, etc)
 - [ ] Query stats / timeouts
 - [ ] Cassandra types marshalling
-- [ ] Prepared statements
+- [x] Prepared statements
 - [ ] Streaming queries/ Async iterators design
-- [ ] Query buffering and QueryContext (attempt to reuse same connection to send multiple frames at once)
 - [ ] Transactions (Batch queries)
-- [ ] Cluster topology
-- [ ] Connection pooling and load balancing
-- [ ] Host selection and sharding
-- [ ] Schema loading
-- [ ] Dynamic types
-- [ ] Geospatial points
+- [x] Connection pooling and load balancing
+- [ ] Host selection and sharding (Import Cassandra custom Murmur3 algo, Which scylla also uses)
 - [ ] Authentication flows
 - [ ] Symbol.dispose, Symbol.asyncDispose
 - [ ] TLS/SSL
-- [ ] Binary API compatibility
-- [ ] Query warnings (server) and static statement validation (client)
 - [ ] User-defined functions and aggregates
 - [ ] Unit tests
 - [ ] Integration tests
 - [ ] Benchmark comparisons with Datastax driver
-- [ ] Import Cassandra custom Murmur3 algo (Which scylla also uses)
+
+
+## Wishlist
+
+- [ ] Schema loading
+- [ ] Dynamic types
+- [ ] Query warnings (server) and static statement validation (client)
+- [ ] Geospatial points
+
 
 ## Features from the Datastax driver that will **not** be supported
 

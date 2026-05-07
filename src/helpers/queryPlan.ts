@@ -1,26 +1,47 @@
-import * as mmh from 'murmurhash';
+import mmh from 'murmurhash';
+//import nsp from 'node-sql-parser';
+import type Host from '../host';
+import type { Options } from '../defaults';
 
-export function queryPlan(hosts, connectionOptions) {
-    function parse(statement, vars, queryOptions) {
+export type ParsedQuery = {
+    prepared: boolean
+    singleIdSearch: boolean
+    //readOnly: boolean
+    statement: string
+    vars: any[]
+    options: any
+    preferredHost?: Host
+}
 
-        if (vars.length && hosts.some(h => h.hostInfo.tokens.length > 0)) {
-            // See: https://stackoverflow.com/questions/52564139/what-is-the-algorithm-behind-cassandras-token-function
-            // I don't think this is right... definitly not
-            const hash = mmh.v3(vars[0]);
-            let tests = 0;
+//const parser = new nsp.Parser();
 
-            console.log('id hash', hash, hosts[0].hostInfo.tokens[0])
-            for (let h = 0; h < hosts.length; h++) {
-                for (let t = 0; t < hosts[h].hostInfo.tokens.length; t++) {
-                    if (hash > hosts[h].hostInfo.tokens[t] && hash < hosts[h].hostInfo.tokens[Math.min(t+1, hosts[h].hostInfo.tokens.length -1)]) {
-                        console.log('prefer host: ', hosts[h], 'after', tests, 'tests');
-                        return hosts[h];
-                    }
-                    tests++;
+export function queryPlan(statement: string, vars: any[], hosts: Host[], options: Options['queryOptions']): ParsedQuery {
+    //const ast = parser.astify(statement);
+    const parsed: ParsedQuery = {
+        prepared: options.prepare === true || (statement.indexOf('?') > -1 && vars.length > 0),
+        //readOnly: ast.type === 'select',
+        singleIdSearch: (vars ?? []).length === 1 && !Array.isArray(vars[0]),
+        statement,
+        vars,
+        options
+    };
+
+    if (parsed.singleIdSearch && hosts.some(h => h.nodeInfo.tokens?.length)) {
+        // See: https://stackoverflow.com/questions/52564139/what-is-the-algorithm-behind-cassandras-token-function
+        const hash = mmh.v3(vars[0]);
+        let tests = 0;
+
+        for (let h = 0; h < hosts.length; h++) {
+            for (let t = 0; t < hosts[h].nodeInfo.tokens?.length ?? 0; t++) {
+                if (hash > hosts[h].nodeInfo.tokens[t] && hash < hosts[h].nodeInfo.tokens[Math.min(t+1, hosts[h].nodeInfo.tokens.length -1)]) {
+                    //console.log('prefer host: ', hosts[h], 'after', tests, 'tests out of ', hosts[h].nodeInfo.tokens?.length, 'tokens');
+                    parsed.preferredHost = hosts[h];
+                    break;
                 }
+                tests++;
             }
         }
     }
 
-    return { parse }
+    return parsed;
 }

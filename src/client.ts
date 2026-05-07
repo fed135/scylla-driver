@@ -1,6 +1,7 @@
 import Host from './host.ts';
 import type { Options } from './defaults.ts';
 import ScyllaError from './helpers/errors.ts';
+import {queryPlan} from './helpers/queryPlan.ts';
 
 export default class Client {
   #hosts: Host[];
@@ -25,9 +26,11 @@ export default class Client {
     if (!Array.isArray(vars)) vars = [vars];
 
     const finalOptions = Object.assign({}, this.#queryOptions, options);
-    const selectedHost = this.#selectHost();
+    const queryInfo = queryPlan(statement, vars, this.#hosts, finalOptions);
 
-    return selectedHost.query(statement, vars, finalOptions, options?.signal);
+    const selectedHost = queryInfo.preferredHost ?? this.#selectHost();
+
+    return selectedHost.query(queryInfo, options?.signal);
   }
 
   async* stream(statement: string, vars?: any[], options?: any): AsyncGenerator<any> {
@@ -38,10 +41,12 @@ export default class Client {
     if (!Array.isArray(vars)) vars = [vars];
 
     const finalOptions = Object.assign({}, this.#queryOptions, options);
+    const queryInfo = queryPlan(statement, vars, this.#hosts, finalOptions);
+
     const selectedHost = this.#selectHost();
     const signal: AbortSignal | undefined = options?.signal;
 
-    yield* await selectedHost.stream(statement, vars, finalOptions, signal);
+    yield* await selectedHost.stream(queryInfo, signal);
   }
 
   batch(): Promise<void> {

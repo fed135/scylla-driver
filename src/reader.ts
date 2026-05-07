@@ -51,7 +51,6 @@ export default class Reader {
   #routeFrame(payload: number[], options: Options) {
     const decoded = streamDecode(payload, options);
 
-    if (decoded.metadata.opcode === 'error') return this.#errorChannel(decoded);
     return this.#dataChannel(decoded);
   }
 }

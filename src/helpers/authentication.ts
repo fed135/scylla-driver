@@ -4,7 +4,7 @@ import type { Options } from '../defaults.ts';
 
 export default class AuthenticationHandler {
     status: number
-    #readyState: { promise: Promise<void>, resolve: Function, reject: Function }
+    #readyState: { promise: Promise<Connection>, resolve: Function, reject: Function }
     #connection: Connection
 
     constructor(connection: Connection) {
@@ -15,7 +15,8 @@ export default class AuthenticationHandler {
 
     #handleData(decoded) {
         if (decoded.metadata.opcode === 'ready') {
-            this.#readyState.resolve();
+            console.log('ready!')
+            this.#readyState.resolve(this.#connection);
         }
     }
 
